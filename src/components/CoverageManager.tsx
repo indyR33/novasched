@@ -4,8 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { ShieldCheck, Plus, Edit2, RotateCw, Calendar, Check, AlertCircle } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { CoverageRequirement, RotationPattern, UserRole } from '../types/planning';
+import { ROTATION_PATTERNS_EN } from '../utils/i18nData';
 
 interface CoverageManagerProps {
   coverageRequirements: CoverageRequirement[];
@@ -22,6 +24,9 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
   onUpdateCoverage,
   onUpdateRotations
 }) => {
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [activeSubTab, setActiveSubTab] = useState<'COVERAGE' | 'ROTATION'>('COVERAGE');
 
   const handleMinChange = (id: string, newMin: number) => {
@@ -44,9 +49,9 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[#1E293B]">Besoins Opérationnels de Couverture & Grilles de Cycle</h2>
+            <h2 className="text-sm font-bold text-[#1E293B]">{t('coverage.title')}</h2>
             <p className="text-xs text-[#64748B]">
-              Définition des effectifs cibles par tranche horaire et patterns de rotation (Section 12 & 13)
+              {t('coverage.subtitle')}
             </p>
           </div>
         </div>
@@ -58,7 +63,7 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
               activeSubTab === 'COVERAGE' ? 'bg-[#3B82F6] text-white shadow-2xs' : 'text-[#64748B] hover:text-[#1E293B]'
             }`}
           >
-            Besoins de Couverture
+            {t('coverage.tabCoverage')}
           </button>
           <button
             onClick={() => setActiveSubTab('ROTATION')}
@@ -66,7 +71,7 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
               activeSubTab === 'ROTATION' ? 'bg-[#3B82F6] text-white shadow-2xs' : 'text-[#64748B] hover:text-[#1E293B]'
             }`}
           >
-            Grilles de Rotation ({rotationPatterns.length})
+            {t('coverage.tabRotation')} ({rotationPatterns.length})
           </button>
         </div>
       </div>
@@ -78,9 +83,9 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
             <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
               <div>
                 <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider">
-                  Semaine (Lundi au Vendredi)
+                  {t('coverage.weekdaysTitle')}
                 </h3>
-                <p className="text-[11px] text-[#64748B]">Exigences minimales d'ouverture et relève</p>
+                <p className="text-[11px] text-[#64748B]">{t('coverage.weekdaysSubtitle')}</p>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#EFF6FF] text-[#3B82F6] font-bold">
                 DEFAULT_WEEKDAY
@@ -97,11 +102,11 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
                   >
                     <div>
                       <span className="font-bold text-[#1E293B] text-sm mr-2">{req.subFamily}</span>
-                      <span className="text-[#64748B] text-[11px]">Priorité {req.priority}</span>
+                      <span className="text-[#64748B] text-[11px]">{t('coverage.priority')} {req.priority}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-[#64748B] font-medium">Minimum :</span>
+                      <span className="text-[#64748B] font-medium">{t('coverage.minimum')}</span>
                       {userRole === 'ADMIN' ? (
                         <input
                           type="number"
@@ -114,7 +119,7 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
                       ) : (
                         <span className="w-8 text-center font-bold text-[#3B82F6]">{req.minimum}</span>
                       )}
-                      <span className="text-[#94A3B8]">agent(s)</span>
+                      <span className="text-[#94A3B8]">{t('coverage.agentsCount')}</span>
                     </div>
                   </div>
                 ))}
@@ -126,9 +131,9 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
             <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
               <div>
                 <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider">
-                  Week-end (Samedi & Dimanche)
+                  {t('coverage.weekendsTitle')}
                 </h3>
-                <p className="text-[11px] text-[#64748B]">Permanence opérationnelle allégée</p>
+                <p className="text-[11px] text-[#64748B]">{t('coverage.weekendsSubtitle')}</p>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FEF2F2] text-[#EF4444] font-bold">
                 DEFAULT_WEEKEND
@@ -145,11 +150,11 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
                   >
                     <div>
                       <span className="font-bold text-slate-900 text-sm mr-2">{req.subFamily}</span>
-                      <span className="text-slate-500 text-[11px]">Priorité {req.priority}</span>
+                      <span className="text-slate-500 text-[11px]">{t('coverage.priority')} {req.priority}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-500 font-medium">Minimum :</span>
+                      <span className="text-slate-500 font-medium">{t('coverage.minimum')}</span>
                       {userRole === 'ADMIN' ? (
                         <input
                           type="number"
@@ -162,7 +167,7 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
                       ) : (
                         <span className="w-8 text-center font-bold text-rose-700">{req.minimum}</span>
                       )}
-                      <span className="text-slate-400">agent(s)</span>
+                      <span className="text-slate-400">{t('coverage.agentsCount')}</span>
                     </div>
                   </div>
                 ))}
@@ -173,35 +178,40 @@ export const CoverageManager: React.FC<CoverageManagerProps> = ({
         /* Rotation Patterns */
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {rotationPatterns.map(pattern => (
-              <div key={pattern.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">{pattern.name}</h3>
-                    <p className="text-xs text-slate-500">{pattern.description}</p>
-                  </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
-                    Cycle {pattern.cycleLength} jours
-                  </span>
-                </div>
+            {rotationPatterns.map(pattern => {
+              const pName = isEn && ROTATION_PATTERNS_EN[pattern.id] ? ROTATION_PATTERNS_EN[pattern.id].name : pattern.name;
+              const pDesc = isEn && ROTATION_PATTERNS_EN[pattern.id] ? ROTATION_PATTERNS_EN[pattern.id].description : pattern.description;
 
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {pattern.steps.map((step, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-2 rounded-lg border text-center min-w-[50px] ${
-                        step.isRest
-                          ? 'bg-stone-100 border-stone-300 text-stone-700'
-                          : 'bg-indigo-50 border-indigo-200 text-indigo-900'
-                      }`}
-                    >
-                      <div className="text-[9px] text-slate-400">J+{step.dayIndex + 1}</div>
-                      <div className="text-xs font-bold">{step.suggestedShiftCode || step.requiredFamily}</div>
+              return (
+                <div key={pattern.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">{pName}</h3>
+                      <p className="text-xs text-slate-500">{pDesc}</p>
                     </div>
-                  ))}
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
+                      {t('coverage.cycleDays', { count: pattern.cycleLength })}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {pattern.steps.map((step, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded-lg border text-center min-w-[50px] ${
+                          step.isRest
+                            ? 'bg-stone-100 border-stone-300 text-stone-700'
+                            : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                        }`}
+                      >
+                        <div className="text-[9px] text-slate-400">{t('coverage.dayStep', { day: step.dayIndex + 1 })}</div>
+                        <div className="text-xs font-bold">{step.suggestedShiftCode || step.requiredFamily}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

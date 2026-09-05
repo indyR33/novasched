@@ -4,8 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Users, Plus, Check, X, ShieldAlert, Edit2, UserCheck, Calendar, Filter } from 'lucide-react';
+import { Users, Plus, Edit2, Filter } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Employee, Shift, Qualification, QualificationStatus, UserRole } from '../types/planning';
+import { TEAMS_EN, GROUPS_EN } from '../utils/i18nData';
 
 interface EmployeeManagerProps {
   employees: Employee[];
@@ -26,18 +28,28 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
   onAddEmployee,
   onUpdateQualification
 }) => {
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [selectedTeam, setSelectedTeam] = useState<string>('ALL');
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
-  // Filtered
   const filteredEmployees = employees.filter(e => {
     if (selectedTeam !== 'ALL' && e.team !== selectedTeam) return false;
     return true;
   });
 
-  const teams = Array.from(new Set(employees.map(e => e.team))).sort();
+  const rawTeams: string[] = Array.from(new Set<string>(employees.map(e => e.team))).sort();
   const workShifts = shifts.filter(s => s.type === 'travail');
+
+  const getTeamLabel = (team: string) => {
+    return isEn && TEAMS_EN[team] ? TEAMS_EN[team] : team;
+  };
+
+  const getGroupLabel = (group: string) => {
+    return isEn && GROUPS_EN[group] ? GROUPS_EN[group] : group;
+  };
 
   const getQualStatus = (empId: string, shiftCode: string) => {
     const q = qualifications.find(x => x.employeeId === empId && x.shiftCode === shiftCode);
@@ -68,8 +80,8 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
             <Users className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[#1E293B]">Référentiel des Collaborateurs & Matrice d'Habilitations</h2>
-            <p className="text-xs text-[#64748B]">Gestion des compétences, dates de contrat et autorisations de vacations</p>
+            <h2 className="text-sm font-bold text-[#1E293B]">{t('employees.title')}</h2>
+            <p className="text-xs text-[#64748B]">{t('employees.subtitle')}</p>
           </div>
         </div>
 
@@ -81,9 +93,9 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
               onChange={e => setSelectedTeam(e.target.value)}
               className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-xs text-[#1E293B] font-medium focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
             >
-              <option value="ALL">Toutes les équipes</option>
-              {teams.map(t => (
-                <option key={t} value={t}>{t}</option>
+              <option value="ALL">{t('employees.allTeams')}</option>
+              {rawTeams.map(t => (
+                <option key={t} value={t}>{getTeamLabel(t)}</option>
               ))}
             </select>
           </div>
@@ -107,7 +119,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#3B82F6] text-white font-semibold text-xs shadow-xs hover:bg-[#2563EB] transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Nouveau Collaborateur</span>
+              <span>{t('employees.newEmployee')}</span>
             </button>
           )}
         </div>
@@ -120,43 +132,43 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
             <thead className="bg-[#F8FAFC] text-[#64748B] font-semibold border-b border-[#E2E8F0]">
               <tr>
                 <th className="py-2.5 px-3 w-56 sticky left-0 bg-[#F8FAFC] z-10 border-r border-[#E2E8F0]">
-                  Collaborateur
+                  {t('employees.colEmployee')}
                 </th>
-                <th className="py-2.5 px-2 w-32 border-r border-[#E2E8F0]">Contrat & Dates</th>
-                <th className="py-2.5 px-2 w-36 border-r border-[#E2E8F0]">Groupe & Équipe</th>
+                <th className="py-2.5 px-2 w-32 border-r border-[#E2E8F0]">{t('employees.colContract')}</th>
+                <th className="py-2.5 px-2 w-36 border-r border-[#E2E8F0]">{t('employees.colTeamGroup')}</th>
                 {workShifts.map(s => (
                   <th key={s.code} className="py-2 px-2 text-center border-r border-[#E2E8F0] min-w-[55px]">
                     <div className="font-bold text-[#1E293B]">{s.code}</div>
                     <div className="text-[10px] text-[#94A3B8] font-normal">{s.family}</div>
                   </th>
                 ))}
-                {userRole === 'ADMIN' && <th className="py-2.5 px-2 text-center w-16">Action</th>}
+                {userRole === 'ADMIN' && <th className="py-2.5 px-2 text-center w-16">{t('employees.colActions')}</th>}
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
               {filteredEmployees.map(emp => (
                 <tr key={emp.id} className="hover:bg-slate-50/70 transition-colors">
-                  {/* Name cell */}
+                  {/* Name cell - Agent names preserved as required */}
                   <td className="py-2.5 px-3 sticky left-0 bg-white hover:bg-slate-50 z-10 border-r border-slate-200">
                     <div className="font-semibold text-slate-900">
                       {emp.lastName} {emp.firstName}
                     </div>
                     <div className="text-[10px] text-slate-400 font-mono">
-                      {emp.matricule} {!emp.isActive && '• (Inactif)'}
+                      {emp.matricule} {!emp.isActive && `• (${t('employees.inactiveBadge')})`}
                     </div>
                   </td>
 
                   {/* Contract Dates */}
                   <td className="py-2 px-2 border-r border-slate-200 font-mono text-[11px] text-slate-600">
-                    <div>Du : {emp.arrivalDate}</div>
-                    {emp.departureDate && <div className="text-rose-600">Au : {emp.departureDate}</div>}
+                    <div>{isEn ? 'From:' : 'Du :'} {emp.arrivalDate}</div>
+                    {emp.departureDate && <div className="text-rose-600">{isEn ? 'To:' : 'Au :'} {emp.departureDate}</div>}
                   </td>
 
                   {/* Group & Team */}
                   <td className="py-2 px-2 border-r border-slate-200 text-[11px] text-slate-600">
-                    <div className="font-medium text-slate-800">{emp.team}</div>
-                    <div className="text-[10px] text-slate-500">{emp.comparisonGroup}</div>
+                    <div className="font-medium text-slate-800">{getTeamLabel(emp.team)}</div>
+                    <div className="text-[10px] text-slate-500">{getGroupLabel(emp.comparisonGroup)}</div>
                   </td>
 
                   {/* Shift Qualifications */}
@@ -172,7 +184,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                         className={`py-2 px-1 text-center border-r border-slate-200 select-none ${
                           userRole !== 'VIEWER' ? 'cursor-pointer hover:bg-indigo-50/60' : 'cursor-default'
                         }`}
-                        title={note || (isAuth ? 'Habilité' : 'Non habilité')}
+                        title={note || (isAuth ? (isEn ? 'Authorized' : 'Habilité') : (isEn ? 'Not authorized' : 'Non habilité'))}
                       >
                         <div className="inline-flex items-center justify-center">
                           {isAuth ? (
@@ -198,7 +210,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                           setIsNewModalOpen(true);
                         }}
                         className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-                        title="Modifier"
+                        title={t('common.edit')}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -216,13 +228,13 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-5 space-y-4 text-xs">
             <h3 className="text-base font-bold text-slate-900">
-              {employees.some(e => e.id === editingEmployee.id) ? 'Modifier le Collaborateur' : 'Nouveau Collaborateur'}
+              {(employees || []).some(e => e.id === editingEmployee.id) ? t('employees.editEmployee') : t('employees.newEmployee')}
             </h3>
 
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Nom</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalLastName')}</label>
                   <input
                     type="text"
                     value={editingEmployee.lastName}
@@ -231,7 +243,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Prénom</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalFirstName')}</label>
                   <input
                     type="text"
                     value={editingEmployee.firstName}
@@ -243,7 +255,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Matricule</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalMatricule')}</label>
                   <input
                     type="text"
                     value={editingEmployee.matricule}
@@ -252,7 +264,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Équipe</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalTeam')}</label>
                   <input
                     type="text"
                     value={editingEmployee.team}
@@ -264,7 +276,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Date d'arrivée (R02)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalArrival')} (R02)</label>
                   <input
                     type="date"
                     value={editingEmployee.arrivalDate}
@@ -273,7 +285,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Date de départ (R03)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalDeparture')} (R03)</label>
                   <input
                     type="date"
                     value={editingEmployee.departureDate || ''}
@@ -284,7 +296,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Groupe de Comparaison (Équilibrage)</label>
+                <label className="block font-semibold text-slate-700 mb-1">{t('employees.modalGroup')}</label>
                 <input
                   type="text"
                   value={editingEmployee.comparisonGroup}
@@ -300,7 +312,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                   onChange={e => setEditingEmployee({ ...editingEmployee, isActive: e.target.checked })}
                   className="rounded text-indigo-600 focus:ring-indigo-500"
                 />
-                <span className="font-medium text-slate-800">Collaborateur Actif</span>
+                <span className="font-medium text-slate-800">{t('employees.modalActiveInStaff')}</span>
               </label>
             </div>
 
@@ -310,12 +322,12 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                 onClick={() => setIsNewModalOpen(false)}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (employees.some(e => e.id === editingEmployee.id)) {
+                  if ((employees || []).some(e => e.id === editingEmployee.id)) {
                     onUpdateEmployee(editingEmployee);
                   } else {
                     onAddEmployee(editingEmployee);
@@ -324,7 +336,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({
                 }}
                 className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700"
               >
-                Enregistrer
+                {t('common.save')}
               </button>
             </div>
           </div>

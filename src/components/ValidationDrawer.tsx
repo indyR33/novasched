@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { X, ShieldAlert, AlertTriangle, Info, CheckCircle2, Search, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ValidationIssue, RuleLevel } from '../types/planning';
 
 interface ValidationDrawerProps {
@@ -22,6 +23,9 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
   score,
   onFocusCell
 }) => {
+  const { i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [filterLevel, setFilterLevel] = useState<RuleLevel | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
 
@@ -30,7 +34,6 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
   const hardIssues = issues.filter(i => i.level === 'HARD');
   const warningIssues = issues.filter(i => i.level === 'WARNING');
   const optIssues = issues.filter(i => i.level === 'OPTIMISATION');
-  const infoIssues = issues.filter(i => i.level === 'INFO' || i.level === 'A_VALIDER');
 
   const filteredIssues = issues
     .filter(i => filterLevel === 'ALL' || i.level === filterLevel)
@@ -52,7 +55,9 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
         <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC]">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-[#1E293B]">Contrôle de Conformité</h3>
+              <h3 className="text-base font-bold text-[#1E293B]">
+                {isEn ? 'Compliance Audit' : 'Audit de Conformité'}
+              </h3>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 score >= 90 ? 'bg-[#ECFDF5] text-[#10B981]' : score >= 75 ? 'bg-[#FFFBEB] text-[#F59E0B]' : 'bg-[#FEF2F2] text-[#EF4444]'
               }`}>
@@ -60,7 +65,7 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
               </span>
             </div>
             <p className="text-xs text-[#64748B] mt-0.5">
-              {hardIssues.length} bloquants • {warningIssues.length} alertes • {optIssues.length} optimisations
+              {hardIssues.length} {isEn ? 'blocking' : 'bloquants'} • {warningIssues.length} {isEn ? 'warnings' : 'alertes'} • {optIssues.length} {isEn ? 'optimizations' : 'optimisations'}
             </p>
           </div>
           <button
@@ -77,7 +82,7 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
             <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder="Filtrer anomalies par règle, date..."
+              placeholder={isEn ? 'Filter anomalies by rule, date...' : 'Filtrer anomalies par règle, date...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#F8FAFC] border border-[#CBD5E1] rounded-full text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
@@ -91,7 +96,7 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
                 filterLevel === 'ALL' ? 'bg-[#1E293B] text-white' : 'bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]'
               }`}
             >
-              Tous ({issues.length})
+              {isEn ? 'All' : 'Tous'} ({issues.length})
             </button>
             <button
               onClick={() => setFilterLevel('HARD')}
@@ -115,7 +120,7 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
                 filterLevel === 'OPTIMISATION' ? 'bg-[#3B82F6] text-white' : 'bg-[#EFF6FF] text-[#3B82F6] hover:bg-[#DBEAFE]'
               }`}
             >
-              Optimisation ({optIssues.length})
+              {isEn ? 'Optimization' : 'Optimisation'} ({optIssues.length})
             </button>
           </div>
         </div>
@@ -125,14 +130,17 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
           {filteredIssues.length === 0 ? (
             <div className="text-center py-12 text-[#94A3B8]">
               <CheckCircle2 className="w-8 h-8 mx-auto text-[#10B981] mb-2 opacity-80" />
-              <p className="text-xs font-semibold text-[#1E293B]">Aucune anomalie dans cette catégorie</p>
-              <p className="text-[11px] text-[#64748B] mt-0.5">Toutes les règles vérifiées sont conformes.</p>
+              <p className="text-xs font-semibold text-[#1E293B]">
+                {isEn ? 'No anomalies in this category' : 'Aucune anomalie dans cette catégorie'}
+              </p>
+              <p className="text-[11px] text-[#64748B] mt-0.5">
+                {isEn ? 'All verified rules are fully compliant.' : 'Toutes les règles vérifiées sont conformes.'}
+              </p>
             </div>
           ) : (
             filteredIssues.map(issue => {
               const isHard = issue.level === 'HARD';
               const isWarning = issue.level === 'WARNING';
-              const isOpt = issue.level === 'OPTIMISATION';
 
               return (
                 <div
@@ -179,7 +187,7 @@ export const ValidationDrawer: React.FC<ValidationDrawerProps> = ({
                         }}
                         className="inline-flex items-center gap-1 text-[#3B82F6] hover:text-[#2563EB] font-sans font-semibold text-[11px]"
                       >
-                        <span>Localiser cellule</span>
+                        <span>{isEn ? 'Locate cell' : 'Localiser cellule'}</span>
                         <ExternalLink className="w-3 h-3" />
                       </button>
                     )}

@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, CheckCircle2, XCircle, Play, ShieldCheck, RefreshCw } from 'lucide-react';
 import { BusinessTestsRunner, TestSuiteResult } from '../engine/businessTests';
 
@@ -16,6 +17,9 @@ export const TestsRunnerModal: React.FC<TestsRunnerModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const { i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [suiteResult, setSuiteResult] = useState<TestSuiteResult | null>(() => {
     return BusinessTestsRunner.runSuite();
   });
@@ -42,8 +46,14 @@ export const TestsRunnerModal: React.FC<TestsRunnerModalProps> = ({
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Banc de Tests Métier & Certification (Section 27)</h3>
-              <p className="text-xs text-slate-500">Suite d'assurance qualité autonome validant les règles R01 à R40</p>
+              <h3 className="text-base font-bold text-slate-900">
+                {isEn ? 'Business Test Bench & Certification (Section 27)' : 'Banc de Tests Métier & Certification (Section 27)'}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {isEn
+                  ? 'Autonomous QA suite certifying rules R01 to R40'
+                  : "Suite d'assurance qualité autonome validant les règles R01 à R40"}
+              </p>
             </div>
           </div>
           <button
@@ -59,12 +69,15 @@ export const TestsRunnerModal: React.FC<TestsRunnerModalProps> = ({
           <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-slate-700">
-                Résultat global : <strong>{suiteResult.passed}</strong> / <strong>{suiteResult.total}</strong> tests validés
+                {isEn ? 'Overall result: ' : 'Résultat global : '}
+                <strong>{suiteResult.passed}</strong> / <strong>{suiteResult.total}</strong> {isEn ? 'tests passed' : 'tests validés'}
               </span>
               <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
                 suiteResult.failed === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
               }`}>
-                {suiteResult.failed === 0 ? '100% SUCCÈS - CERTIFIÉ CONFORME' : `${suiteResult.failed} ÉCHEC(S)`}
+                {suiteResult.failed === 0
+                  ? (isEn ? '100% SUCCESS - CERTIFIED COMPLIANT' : '100% SUCCÈS - CERTIFIÉ CONFORME')
+                  : `${suiteResult.failed} ${isEn ? 'FAILURE(S)' : 'ÉCHEC(S)'}`}
               </span>
             </div>
 
@@ -74,7 +87,7 @@ export const TestsRunnerModal: React.FC<TestsRunnerModalProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors shadow-xs"
             >
               <RefreshCw className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`} />
-              <span>Re-lancer les tests</span>
+              <span>{isRunning ? (isEn ? 'Running...' : 'Tests en cours...') : (isEn ? 'Re-run tests' : 'Re-lancer les tests')}</span>
             </button>
           </div>
         )}
@@ -115,7 +128,7 @@ export const TestsRunnerModal: React.FC<TestsRunnerModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
           >
-            Fermer
+            {isEn ? 'Close' : 'Fermer'}
           </button>
         </div>
       </div>

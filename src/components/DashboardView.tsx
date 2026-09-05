@@ -10,14 +10,13 @@ import {
   AlertTriangle,
   Clock,
   ShieldCheck,
-  TrendingUp,
   Award,
   Zap,
-  Calendar,
   AlertCircle
 } from 'lucide-react';
 import { PlanningVersion, ValidationIssue, Employee } from '../types/planning';
 import { EmployeePeriodStats, DailyCoverageStatus } from '../engine/rulesEngine';
+import { GROUPS_EN } from '../utils/i18nData';
 
 interface DashboardViewProps {
   version: PlanningVersion;
@@ -40,7 +39,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenGenerator,
   onOpenValidation
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const hardIssues = useMemo(() => issues.filter(i => i.level === 'HARD'), [issues]);
   const warningIssues = useMemo(() => issues.filter(i => i.level === 'WARNING'), [issues]);
   const optIssues = useMemo(() => issues.filter(i => i.level === 'OPTIMISATION'), [issues]);
@@ -55,11 +56,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     let deficitCount = 0;
 
     (Object.values(dailyCoverage || {}) as DailyCoverageStatus[]).forEach(day => {
-      // 4 subfamilies: M1, M2, S1, S3
-      const m1Req = day.isWeekend ? 1 : 1;
-      const m2Req = day.isWeekend ? 1 : 1;
-      const s1Req = day.isWeekend ? 1 : 1;
-      const s3Req = day.isWeekend ? 1 : 1;
+      const m1Req = 1;
+      const m2Req = 1;
+      const s1Req = 1;
+      const s3Req = 1;
 
       const needed = m1Req + m2Req + s1Req + s3Req;
       totalSlotsNeeded += needed;
@@ -80,11 +80,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return { rate, totalSlotsNeeded, totalSlotsCovered, deficitCount };
   }, [dailyCoverage]);
 
-  // Sorted by hours (most loaded / least loaded)
-  const sortedByHours = useMemo(() => {
-    return [...statsList].sort((a, b) => b.totalHours - a.totalHours);
-  }, [statsList]);
-
   const avgHours = useMemo(() => {
     if (statsList.length === 0) return 0;
     return Math.round((totalHours / statsList.length) * 10) / 10;
@@ -103,13 +98,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Weekday distribution calculation for the chart
   const weekDayAllocation = useMemo(() => {
-    const days = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
+    const days = isEn 
+      ? ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+      : ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
     const counts = [0, 0, 0, 0, 0, 0, 0];
     const s3Counts = [0, 0, 0, 0, 0, 0, 0];
 
     (Object.entries(dailyCoverage || {}) as [string, DailyCoverageStatus][]).forEach(([dateStr, status]) => {
       const d = new Date(dateStr);
-      // getDay: 0 is Sun, 1 is Mon...
       const dayIdx = (d.getDay() + 6) % 7;
       const morningShifts = (status.familyCounts['M1'] || 0) + (status.familyCounts['M2'] || 0);
       const eveningShifts = (status.familyCounts['S1'] || 0) + (status.familyCounts['S3'] || 0);
@@ -127,16 +123,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const pctS = Math.min(100, Math.round((s / maxVal) * 100));
       return { dayName, m, s, total, pctM, pctS };
     });
-  }, [dailyCoverage]);
+  }, [dailyCoverage, isEn]);
 
   return (
     <div className="space-y-6">
-      {/* Top Banner (Matching Professional Polish theme header) */}
+      {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
           <h2 className="text-2xl font-bold text-[#1E293B] tracking-tight">{t('dashboard.title')}</h2>
           <p className="text-sm text-[#64748B]">
-            {t('dashboard.subtitle')} • {activeEmployees.length} collaborateurs suivis
+            {t('dashboard.subtitle')} • {activeEmployees.length} {t('dashboard.trackedEmployees')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -157,9 +153,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* KPI Cards Grid (4 columns styled strictly according to Design HTML) */}
+      {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Score de Conformité */}
+        {/* Compliance Score */}
         <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">{t('dashboard.kpi.complianceScore')}</span>
@@ -190,39 +186,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* {t('dashboard.kpi.coverage')} */}
+        {/* Coverage */}
         <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">{t('dashboard.kpi.coverage')}</span>
             <div className="text-[#3B82F6] bg-[#EFF6FF] px-2 py-0.5 rounded text-xs font-bold">
-              {coverageStats.deficitCount > 0 ? `${coverageStats.deficitCount} manques` : 'Optimal'}
+              {coverageStats.deficitCount > 0 ? `${coverageStats.deficitCount} ${t('dashboard.kpi.deficit')}` : (isEn ? 'Optimal' : 'Optimal')}
             </div>
           </div>
           <div className="text-3xl font-bold mb-1 text-[#1E293B]">{coverageStats.rate}%</div>
           <p className="text-xs text-[#94A3B8]">
-            {coverageStats.totalSlotsCovered} / {coverageStats.totalSlotsNeeded} vacations assurées
+            {coverageStats.totalSlotsCovered} / {coverageStats.totalSlotsNeeded} {isEn ? 'shifts covered' : 'vacations assurées'}
           </p>
         </div>
 
-        {/* Volume Heures */}
+        {/* Hours Volume */}
         <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Volume Heures</span>
+            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">{t('dashboard.volumeHeures')}</span>
             <div className="text-[#F59E0B] bg-[#FFFBEB] px-2 py-0.5 rounded text-xs font-bold">
-              {avgHours}h / agent
+              {avgHours} {t('dashboard.perAgent')}
             </div>
           </div>
           <div className="text-3xl font-bold mb-1 text-[#1E293B]">{totalHours}h</div>
-          <p className="text-xs text-[#94A3B8]">Moyenne d'activité sur la période</p>
+          <p className="text-xs text-[#94A3B8]">{t('dashboard.avgActivity')}</p>
         </div>
 
-        {/* Anomalies & Dérogations */}
+        {/* Anomalies */}
         <div
           onClick={onOpenValidation}
           className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs cursor-pointer hover:border-[#CBD5E1] transition-all"
         >
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Anomalies Détectées</span>
+            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">{t('dashboard.anomaliesDetectees')}</span>
             <div
               className={`px-2 py-0.5 rounded text-xs font-bold ${
                 hardIssues.length > 0
@@ -232,30 +228,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   : 'text-[#10B981] bg-[#ECFDF5]'
               }`}
             >
-              {hardIssues.length > 0 ? 'Action Requise' : 'Sous Contrôle'}
+              {hardIssues.length > 0 ? t('dashboard.actionRequise') : t('dashboard.sousControle')}
             </div>
           </div>
           <div className="text-3xl font-bold mb-1 text-[#1E293B]">
             {hardIssues.length} <span className="text-sm font-semibold text-[#EF4444]">HARD</span>
           </div>
           <p className="text-xs text-[#64748B] flex items-center justify-between">
-            <span>{warningIssues.length} avertissements • {optIssues.length} optim.</span>
-            <span className="text-[#3B82F6] font-semibold text-[11px]">Inspecter →</span>
+            <span>{warningIssues.length} {t('dashboard.warningsCount')} • {optIssues.length} {t('dashboard.optimCount')}</span>
+            <span className="text-[#3B82F6] font-semibold text-[11px]">{t('dashboard.inspect')}</span>
           </p>
         </div>
       </div>
 
-      {/* Two Column Layout (Matching Design HTML Cards) */}
+      {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Card: Upcoming Milestones / Points d'Attention */}
+        {/* Left Card: Vigilance & Alerts */}
         <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden flex flex-col">
           <div className="p-5 border-b border-[#F1F5F9] flex items-center justify-between">
-            <h3 className="font-bold text-[#1E293B]">Points de Vigilance & Alertes Métier</h3>
+            <h3 className="font-bold text-[#1E293B]">{t('dashboard.vigilanceTitle')}</h3>
             <button
               onClick={onOpenValidation}
               className="text-[#3B82F6] text-xs font-semibold hover:underline"
             >
-              Tout Afficher
+              {t('dashboard.toutAfficher')}
             </button>
           </div>
 
@@ -269,11 +265,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-[#1E293B] truncate">{issue.title}</div>
                   <div className="text-[10px] text-[#94A3B8] truncate">
-                    {issue.ruleId} • {issue.date || 'Toutes dates'} {issue.employeeName ? `• ${issue.employeeName}` : ''}
+                    {issue.ruleId} • {issue.date || (isEn ? 'All dates' : 'Toutes dates')} {issue.employeeName ? `• ${issue.employeeName}` : ''}
                   </div>
                 </div>
                 <div className="text-xs font-bold text-[#EF4444] bg-[#FEF2F2] px-2 py-1 rounded">
-                  BLOQUANT
+                  {t('dashboard.bloquantBadge')}
                 </div>
               </div>
             ))}
@@ -287,11 +283,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-[#1E293B] truncate">{issue.title}</div>
                   <div className="text-[10px] text-[#94A3B8] truncate">
-                    {issue.ruleId} • {issue.date || 'Période'} {issue.employeeName ? `• ${issue.employeeName}` : ''}
+                    {issue.ruleId} • {issue.date || (isEn ? 'Period' : 'Période')} {issue.employeeName ? `• ${issue.employeeName}` : ''}
                   </div>
                 </div>
                 <div className="text-xs font-bold text-[#F59E0B] bg-[#FFFBEB] px-2 py-1 rounded">
-                  ATTENTION
+                  {t('dashboard.attentionBadge')}
                 </div>
               </div>
             ))}
@@ -303,65 +299,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-bold text-[#1E293B]">Planning 100% Conforme</div>
-                  <div className="text-[10px] text-[#94A3B8]">Toutes les contraintes légales et contractuelles sont respectées.</div>
+                  <div className="text-sm font-bold text-[#1E293B]">{t('dashboard.compliantTitle')}</div>
+                  <div className="text-[10px] text-[#94A3B8]">{t('dashboard.compliantDesc')}</div>
                 </div>
                 <div className="text-xs font-bold text-[#10B981] bg-[#ECFDF5] px-2 py-1 rounded">
-                  CONFORME
+                  {t('dashboard.conformeBadge')}
                 </div>
               </div>
             )}
 
-            {/* Completed Milestone (Done) */}
+            {/* Validation Engine Status */}
             <div className="flex items-center gap-4 opacity-75 pt-2 border-t border-[#F1F5F9]">
               <div className="w-10 h-10 rounded-full bg-[#EFF6FF] flex items-center justify-center text-[#3B82F6] shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-bold text-[#1E293B]">Moteur de Validation Autonome</div>
-                <div className="text-[10px] text-[#94A3B8]">40 règles métier surveillées en temps réel</div>
+                <div className="text-sm font-bold text-[#1E293B]">{t('dashboard.engineTitle')}</div>
+                <div className="text-[10px] text-[#94A3B8]">{t('dashboard.engineDesc')}</div>
               </div>
               <div className="text-xs font-bold text-[#3B82F6] bg-[#EFF6FF] px-2 py-1 rounded">
-                ACTIF
+                {t('dashboard.actifBadge')}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Card: Resource Allocation (Bar Chart strictly matching Design HTML) */}
+        {/* Right Card: Resource Allocation Chart */}
         <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col">
           <div className="p-5 border-b border-[#F1F5F9] flex items-center justify-between">
-            <h3 className="font-bold text-[#1E293B]">Répartition des Vacations par Jour</h3>
+            <h3 className="font-bold text-[#1E293B]">{t('dashboard.chartTitle')}</h3>
             <div className="flex gap-3">
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]"></div>
-                <span className="text-[10px] font-semibold text-[#64748B]">Matin (M1/M2)</span>
+                <span className="text-[10px] font-semibold text-[#64748B]">{t('dashboard.morningLabel')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
-                <span className="text-[10px] font-semibold text-[#64748B]">Soir/Nuit (S1/S3)</span>
+                <span className="text-[10px] font-semibold text-[#64748B]">{t('dashboard.eveningLabel')}</span>
               </div>
             </div>
           </div>
 
           <div className="p-6 flex-1 flex flex-col justify-center">
-            {/* Bars Column (Design HTML representation) */}
+            {/* Bars Column */}
             <div className="flex items-end justify-between h-36 gap-3 mb-2 px-2">
               {weekDayAllocation.map((item, idx) => (
                 <div key={idx} className="w-full flex flex-col items-center h-full justify-end group relative">
                   {/* Tooltip on hover */}
                   <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1E293B] text-white text-[10px] font-medium px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap z-20">
-                    Matin: {item.m} | Soir: {item.s}
+                    {isEn ? `Morning: ${item.m} | Evening: ${item.s}` : `Matin: ${item.m} | Soir: ${item.s}`}
                   </div>
                   <div className="w-full flex items-end justify-center gap-1 h-full">
-                    {/* Morning bar */}
                     <div className="w-1/2 bg-[#EFF6FF] rounded-t-md relative h-full flex items-end">
                       <div
                         className="w-full bg-[#3B82F6] rounded-t-md transition-all duration-300"
                         style={{ height: `${item.pctM}%` }}
                       ></div>
                     </div>
-                    {/* Evening bar */}
                     <div className="w-1/2 bg-[#ECFDF5] rounded-t-md relative h-full flex items-end">
                       <div
                         className="w-full bg-[#10B981] rounded-t-md transition-all duration-300"
@@ -389,8 +383,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs p-5">
         <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3 mb-4">
           <div>
-            <h3 className="font-bold text-[#1E293B]">Équité de Charge & Pénibilité par Groupe (R31, R32)</h3>
-            <p className="text-xs text-[#64748B]">Contrôle des écarts de vacations tardives (S3) et des dimanches travaillés</p>
+            <h3 className="font-bold text-[#1E293B]">{t('dashboard.fairnessTitle')}</h3>
+            <p className="text-xs text-[#64748B]">{t('dashboard.fairnessSubtitle')}</p>
           </div>
           <Award className="w-5 h-5 text-[#3B82F6]" />
         </div>
@@ -401,17 +395,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             const suns = groupEmployees.map(e => e.sundaysCount);
             const deltaS3 = Math.max(...s3s) - Math.min(...s3s);
             const deltaSun = Math.max(...suns) - Math.min(...suns);
+            const displayGroupName = isEn && GROUPS_EN[groupName] ? GROUPS_EN[groupName] : groupName;
 
             return (
               <div key={groupName} className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold text-[#1E293B]">
-                  <span>{groupName} ({groupEmployees.length} agents)</span>
+                  <span>{displayGroupName} ({groupEmployees.length} {t('dashboard.agentsLabel')})</span>
                   <div className="flex items-center gap-2">
                     <span className={`text-[11px] px-2 py-0.5 rounded font-semibold ${deltaS3 > 2 ? 'bg-[#FEF2F2] text-[#EF4444]' : 'bg-[#ECFDF5] text-[#10B981]'}`}>
-                      Écart S3 : {deltaS3}
+                      {t('dashboard.s3Gap')} {deltaS3}
                     </span>
                     <span className={`text-[11px] px-2 py-0.5 rounded font-semibold ${deltaSun > 1 ? 'bg-[#FFFBEB] text-[#F59E0B]' : 'bg-[#ECFDF5] text-[#10B981]'}`}>
-                      Écart Dim : {deltaSun}
+                      {t('dashboard.sunGap')} {deltaSun}
                     </span>
                   </div>
                 </div>
@@ -419,11 +414,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                   {groupEmployees.map(emp => (
                     <div key={emp.employeeId} className="bg-white p-2.5 rounded-lg border border-[#E2E8F0] flex items-center justify-between text-xs">
+                      {/* Note: Agent names remain exact and untranslated as explicitly requested */}
                       <span className="font-semibold text-[#1E293B] truncate">{emp.employeeName}</span>
                       <div className="flex items-center gap-2.5 font-mono text-[11px]">
                         <span className="text-[#3B82F6] font-semibold">{emp.s3Count} S3</span>
                         <span className="text-[#CBD5E1]">•</span>
-                        <span className="text-[#EF4444] font-semibold">{emp.sundaysCount} Dim</span>
+                        <span className="text-[#EF4444] font-semibold">{emp.sundaysCount} {isEn ? 'Sun' : 'Dim'}</span>
                         <span className="text-[#CBD5E1]">•</span>
                         <span className="text-[#64748B] font-bold">{emp.totalHours}h</span>
                       </div>

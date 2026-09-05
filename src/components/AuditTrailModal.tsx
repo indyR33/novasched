@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, ShieldAlert, History, Filter, Search, ShieldCheck } from 'lucide-react';
 import { AuditLog } from '../types/planning';
 
@@ -18,6 +19,9 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
   onClose,
   logs
 }) => {
+  const { i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [filterAction, setFilterAction] = useState<string>('ALL');
   const [search, setSearch] = useState('');
 
@@ -48,8 +52,14 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
               <History className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Journal d'Audit & Traçabilité (R36)</h3>
-              <p className="text-xs text-slate-500">Historique immuable de toutes les actions, modifications et dérogations</p>
+              <h3 className="text-base font-bold text-slate-900">
+                {isEn ? 'Audit Trail & Traceability (R36)' : "Journal d'Audit & Traçabilité (R36)"}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {isEn
+                  ? 'Immutable history of all actions, edits and logged overrides'
+                  : 'Historique immuable de toutes les actions, modifications et dérogations'}
+              </p>
             </div>
           </div>
           <button
@@ -66,7 +76,7 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder="Rechercher utilisateur, motif..."
+              placeholder={isEn ? 'Search user, action, reason...' : 'Rechercher utilisateur, motif...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
@@ -78,7 +88,7 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
             onChange={e => setFilterAction(e.target.value)}
             className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
           >
-            <option value="ALL">Toutes les actions</option>
+            <option value="ALL">{isEn ? 'All actions' : 'Toutes les actions'}</option>
             {actions.map(a => (
               <option key={a} value={a}>{a}</option>
             ))}
@@ -88,7 +98,9 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
         {/* Log list */}
         <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2 text-xs divide-y divide-slate-100">
           {filteredLogs.length === 0 ? (
-            <div className="text-center py-10 text-slate-400">Aucun événement d'audit enregistré.</div>
+            <div className="text-center py-10 text-slate-400">
+              {isEn ? 'No audit events recorded.' : "Aucun événement d'audit enregistré."}
+            </div>
           ) : (
             filteredLogs.map(log => {
               const isOverride = log.action === 'OVERRIDE_APPLIED';
@@ -105,7 +117,7 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
                       <span className="font-semibold text-slate-900">{log.actor}</span>
                     </div>
                     <span className="font-mono text-[10px] text-slate-400">
-                      {new Date(log.timestamp).toLocaleString('fr-FR')}
+                      {new Date(log.timestamp).toLocaleString(isEn ? 'en-US' : 'fr-FR')}
                     </span>
                   </div>
 
@@ -113,7 +125,7 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
 
                   {log.reason && (
                     <div className="p-2 bg-amber-50/70 border border-amber-200 rounded text-[11px] text-amber-900 font-medium">
-                      <strong>Motif de dérogation :</strong> {log.reason}
+                      <strong>{isEn ? 'Override reason:' : 'Motif de dérogation :'}</strong> {log.reason}
                     </div>
                   )}
                 </div>
@@ -129,7 +141,7 @@ export const AuditTrailModal: React.FC<AuditTrailModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
           >
-            Fermer
+            {isEn ? 'Close' : 'Fermer'}
           </button>
         </div>
       </div>

@@ -4,8 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Sliders, ShieldAlert, AlertTriangle, Info, CheckCircle2, Search, Filter } from 'lucide-react';
+import { Sliders, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { RuleDefinition, RuleLevel, UserRole } from '../types/planning';
+import { RULES_EN, CATEGORIES_I18N } from '../utils/i18nData';
 
 interface RulesManagerProps {
   rules: RuleDefinition[];
@@ -18,21 +20,48 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
   userRole,
   onUpdateRule
 }) => {
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedLevel, setSelectedLevel] = useState<string>('ALL');
 
-  const categories = Array.from(new Set(rules.map(r => r.category))).sort();
+  const rawCategories: string[] = Array.from(new Set<string>(rules.map(r => r.category))).sort();
+
+  const getRuleName = (rule: RuleDefinition) => {
+    if (isEn && RULES_EN[rule.id]) {
+      return RULES_EN[rule.id].name;
+    }
+    return rule.name;
+  };
+
+  const getRuleDesc = (rule: RuleDefinition) => {
+    if (isEn && RULES_EN[rule.id]) {
+      return RULES_EN[rule.id].description;
+    }
+    return rule.description;
+  };
+
+  const getCategoryLabel = (category: string) => {
+    if (CATEGORIES_I18N[category]) {
+      return isEn ? CATEGORIES_I18N[category].en : CATEGORIES_I18N[category].fr;
+    }
+    return category;
+  };
 
   const filteredRules = rules.filter(r => {
     if (selectedCategory !== 'ALL' && r.category !== selectedCategory) return false;
     if (selectedLevel !== 'ALL' && r.currentLevel !== selectedLevel) return false;
     if (searchTerm.trim().length > 0) {
       const q = searchTerm.toLowerCase();
+      const rName = getRuleName(r).toLowerCase();
+      const rDesc = getRuleDesc(r).toLowerCase();
       return (
         r.id.toLowerCase().includes(q) ||
-        r.name.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q)
+        rName.includes(q) ||
+        rDesc.includes(q) ||
+        r.code.toLowerCase().includes(q)
       );
     }
     return true;
@@ -63,9 +92,9 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
             <Sliders className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[#1E293B]">Administration du Moteur de Règles Métier (R01 à R40)</h2>
+            <h2 className="text-sm font-bold text-[#1E293B]">{t('rules.title')}</h2>
             <p className="text-xs text-[#64748B]">
-              Paramétrage dynamique des niveaux de sévérité (HARD, WARNING, OPTIMISATION) et tolérances sans modification de code
+              {t('rules.subtitle')}
             </p>
           </div>
         </div>
@@ -75,10 +104,10 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
             <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder="Rechercher règle (ex: R01, S3)..."
+              placeholder={t('rules.searchPlaceholder')}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg text-xs w-48 sm:w-56 text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+              className="pl-8 pr-3 py-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg text-xs w-48 sm:w-60 text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
             />
           </div>
 
@@ -87,9 +116,9 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
             onChange={e => setSelectedCategory(e.target.value)}
             className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs text-[#1E293B] font-medium focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
-            <option value="ALL">Toutes catégories</option>
-            {categories.map(c => (
-              <option key={c} value={c}>{c}</option>
+            <option value="ALL">{t('rules.allCategories')}</option>
+            {rawCategories.map(c => (
+              <option key={c} value={c}>{getCategoryLabel(c)}</option>
             ))}
           </select>
 
@@ -98,7 +127,7 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
             onChange={e => setSelectedLevel(e.target.value)}
             className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs text-[#1E293B] font-medium focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           >
-            <option value="ALL">Tous niveaux</option>
+            <option value="ALL">{t('rules.allLevels')}</option>
             <option value="HARD">HARD</option>
             <option value="WARNING">WARNING</option>
             <option value="OPTIMISATION">OPTIMISATION</option>
@@ -114,12 +143,12 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-[#F8FAFC] text-[#64748B] font-semibold border-b border-[#E2E8F0]">
               <tr>
-                <th className="py-2.5 px-3 w-16 text-center">ID</th>
-                <th className="py-2.5 px-3 w-52">Règle & Code</th>
-                <th className="py-2.5 px-3">Description Métier & Comportement</th>
-                <th className="py-2.5 px-2 w-28 text-center">Catégorie</th>
-                <th className="py-2.5 px-3 w-36 text-center">Sévérité Active</th>
-                <th className="py-2.5 px-2 w-20 text-center">Statut</th>
+                <th className="py-2.5 px-3 w-16 text-center">{t('rules.colId')}</th>
+                <th className="py-2.5 px-3 w-56">{t('rules.colRule')}</th>
+                <th className="py-2.5 px-3">{t('rules.colDescription')}</th>
+                <th className="py-2.5 px-2 w-36 text-center">{t('rules.colCategory')}</th>
+                <th className="py-2.5 px-3 w-36 text-center">{t('rules.colSeverity')}</th>
+                <th className="py-2.5 px-2 w-24 text-center">{t('rules.colStatus')}</th>
               </tr>
             </thead>
 
@@ -137,15 +166,15 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
                     </td>
 
                     <td className="py-2.5 px-3 border-r border-slate-100">
-                      <div className="font-bold text-slate-900">{rule.name}</div>
+                      <div className="font-bold text-slate-900">{getRuleName(rule)}</div>
                       <div className="text-[10px] font-mono text-slate-400">{rule.code}</div>
                     </td>
 
                     <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700">
-                      <p>{rule.description}</p>
+                      <p>{getRuleDesc(rule)}</p>
                       {Object.keys(rule.parameters).length > 0 && (
                         <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-500 font-mono">
-                          <span>Paramètres:</span>
+                          <span>{t('rules.parameters')}</span>
                           {Object.entries(rule.parameters).map(([k, v]) => (
                             <span key={k} className="bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
                               {k}: {String(v)}
@@ -157,7 +186,7 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
 
                     <td className="py-2.5 px-2 text-center border-r border-slate-100">
                       <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
-                        {rule.category}
+                        {getCategoryLabel(rule.category)}
                       </span>
                     </td>
 
@@ -209,11 +238,11 @@ export const RulesManager: React.FC<RulesManagerProps> = ({
                               : 'bg-slate-100 text-slate-400'
                           }`}
                         >
-                          {rule.isEnabled ? 'Actif' : 'Désactivé'}
+                          {rule.isEnabled ? t('rules.active') : t('rules.disabled')}
                         </button>
                       ) : (
                         <span className={`text-[10px] font-bold ${rule.isEnabled ? 'text-emerald-700' : 'text-slate-400'}`}>
-                          {rule.isEnabled ? 'Actif' : 'Inactif'}
+                          {rule.isEnabled ? t('rules.active') : t('rules.inactive')}
                         </span>
                       )}
                     </td>

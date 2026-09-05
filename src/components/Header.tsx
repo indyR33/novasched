@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   Lock,
   RotateCcw,
-  Search, Globe
+  Search,
+  Globe
 } from 'lucide-react';
 import { UserRole, PlanningVersion } from '../types/planning';
 
@@ -61,10 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRoleChange,
   setUserRole,
   currentVersion,
-  versions = [],
-  onSelectVersion,
   validationScore,
-  issuesCount = 0,
   hardViolationsCount = 0,
   warningsCount = 0,
   onOpenGenerator,
@@ -81,6 +79,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange
 }) => {
   const { t, i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+
   const [localSearch, setLocalSearch] = useState('');
   const isPublished = currentVersion?.status === 'PUBLISHED';
 
@@ -117,13 +117,16 @@ export const Header: React.FC<HeaderProps> = ({
     if (onSearchChange) onSearchChange(val);
   };
 
-  // Determine user initials and label
   const userInitials = userRole === 'ADMIN' ? 'AD' : userRole === 'PLANNER' ? 'PL' : 'VI';
-  const userName = userRole === 'ADMIN' ? 'Administrateur RH' : userRole === 'PLANNER' ? 'Planificateur Chef' : 'Lecteur Invité';
+  const userName = userRole === 'ADMIN'
+    ? (isEn ? 'HR Administrator' : 'Administrateur RH')
+    : userRole === 'PLANNER'
+    ? (isEn ? 'Lead Planner' : 'Planificateur Chef')
+    : (isEn ? 'Guest Viewer' : 'Lecteur Invité');
 
   return (
     <header className="bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-xs">
-      {/* Top Primary Bar (h-16 styled to Professional Polish theme) */}
+      {/* Top Primary Bar */}
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand & Version Badge */}
         <div className="flex items-center gap-3">
@@ -134,26 +137,26 @@ export const Header: React.FC<HeaderProps> = ({
             <h1 className="text-xl font-bold tracking-tight text-[#1E293B]">smart Planning</h1>
             <div className="hidden sm:flex items-center gap-1.5">
               <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]">
-                v{currentVersion?.versionNumber || 1} • {currentVersion?.name || 'Cycle Standard'}
+                v{currentVersion?.versionNumber || 1} • {currentVersion?.name || (isEn ? 'Standard Cycle' : 'Cycle Standard')}
               </span>
               {isPublished ? (
                 <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold bg-[#ECFDF5] text-[#10B981] border border-[#A7F3D0]">
-                  <Lock className="w-3 h-3" /> Verrouillée
+                  <Lock className="w-3 h-3" /> {isEn ? 'Locked' : 'Verrouillée'}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold bg-[#EFF6FF] text-[#3B82F6] border border-[#BFDBFE]">
-                  Brouillon Actif
+                  {isEn ? 'Active Draft' : 'Brouillon Actif'}
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Center: Search, Globe pill */}
+        {/* Center: Search */}
         <div className="relative hidden md:block">
           <input
             type="text"
-            placeholder="Rechercher collaborateur, règle..."
+            placeholder={isEn ? 'Search collaborator, rule...' : 'Rechercher collaborateur, règle...'}
             value={searchQuery !== undefined ? searchQuery : localSearch}
             onChange={handleSearch}
             className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-full py-1.5 pl-10 pr-4 text-xs w-60 lg:w-72 text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] transition-all"
@@ -163,7 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Actions Hub, Compliance, and User Profile */}
+        {/* Right Section */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Validation Score Pill */}
           <button
@@ -176,14 +179,14 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-[#FFFBEB] text-[#F59E0B] border-[#FDE68A] hover:bg-[#FEF3C7]'
                 : 'bg-[#ECFDF5] text-[#10B981] border-[#A7F3D0] hover:bg-[#D1FAE5]'
             }`}
-            title="Consulter le rapport d'analyse des contraintes"
+            title={isEn ? 'Inspect constraint analysis report' : "Consulter le rapport d'analyse des contraintes"}
           >
             {hardViolationsCount > 0 ? (
               <AlertTriangle className="w-3.5 h-3.5 text-[#EF4444]" />
             ) : (
               <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
             )}
-            <span>Conformité : {validationScore}%</span>
+            <span>{isEn ? 'Compliance' : 'Conformité'} : {validationScore}%</span>
             {hardViolationsCount > 0 && (
               <span className="bg-[#EF4444] text-white rounded-full px-1.5 py-0.2 text-[10px]">
                 {hardViolationsCount}
@@ -196,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Generator Modal Action (Primary Button) */}
+          {/* Generator Modal Action */}
           {userRole !== 'VIEWER' && onOpenGenerator && (
             <button
               id="header-generator-btn"
@@ -213,13 +216,13 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Quick Tools Icons: Versions, Tests, Export, Audit */}
+          {/* Quick Tools Icons */}
           <div className="flex items-center gap-1">
             <button
               id="header-versions-btn"
               onClick={handleOpenVersions}
               className="p-2 text-[#64748B] hover:text-[#1E293B] hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] rounded-lg transition-colors"
-              title="Gestion des versions & Différentiel"
+              title={isEn ? 'Version management & Comparison' : 'Gestion des versions & Différentiel'}
             >
               <History className="w-4 h-4" />
             </button>
@@ -228,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-tests-btn"
               onClick={handleOpenTests}
               className="p-2 text-[#64748B] hover:text-[#1E293B] hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] rounded-lg transition-colors"
-              title="Suite de tests métier (14 tests obligatoires)"
+              title={isEn ? 'Business test suite (14 mandatory tests)' : 'Suite de tests métier (14 tests obligatoires)'}
             >
               <ShieldCheck className="w-4 h-4" />
             </button>
@@ -237,7 +240,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-export-btn"
               onClick={onOpenImportExport}
               className="p-2 text-[#64748B] hover:text-[#1E293B] hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] rounded-lg transition-colors"
-              title="Export Excel / PDF / CSV & Import"
+              title={isEn ? 'Export Excel / PDF / CSV & Import' : 'Export Excel / PDF / CSV & Import'}
             >
               <FileSpreadsheet className="w-4 h-4" />
             </button>
@@ -246,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-audit-btn"
               onClick={handleOpenAudit}
               className="p-2 text-[#64748B] hover:text-[#1E293B] hover:bg-[#F8FAFC] border border-transparent hover:border-[#E2E8F0] rounded-lg transition-colors"
-              title="Journal d'audit"
+              title={isEn ? 'Audit trail' : "Journal d'audit"}
             >
               <FileText className="w-4 h-4" />
             </button>
@@ -254,12 +257,15 @@ export const Header: React.FC<HeaderProps> = ({
             {onResetData && (
               <button
                 onClick={() => {
-                  if (window.confirm('Réinitialiser toutes les données aux valeurs de référence initiales ?')) {
+                  const confirmMsg = isEn 
+                    ? 'Reset all data to baseline default values?' 
+                    : 'Réinitialiser toutes les données aux valeurs de référence initiales ?';
+                  if (window.confirm(confirmMsg)) {
                     onResetData();
                   }
                 }}
                 className="p-2 text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#FEF2F2] rounded-lg transition-colors"
-                title="Réinitialiser données d'exemple"
+                title={isEn ? 'Reset demo data' : "Réinitialiser données d'exemple"}
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -270,7 +276,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1 pl-2 border-l border-[#E2E8F0]">
             <Globe className="w-4 h-4 text-[#64748B]" />
             <select
-              value={i18n.language}
+              value={i18n.language.startsWith('en') ? 'en' : 'fr'}
               onChange={(e) => i18n.changeLanguage(e.target.value)}
               className="text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2 py-1 text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
             >

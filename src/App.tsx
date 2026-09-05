@@ -108,7 +108,10 @@ export default function App() {
   }, [evaluation.score, currentVersion?.id]);
 
   // 5. Handlers for Assignments
-  const handleSelectCell = useCallback((employeeId: string, date: string) => {
+  const handleSelectCell = useCallback((employeeOrId: Employee | string, date: string) => {
+    const employeeId = typeof employeeOrId === 'string' ? employeeOrId : employeeOrId?.id;
+    if (!employeeId) return;
+
     if (currentVersion.status === 'PUBLISHED' && userRole !== 'ADMIN') {
       // Viewer or Planner cannot edit locked version (R35)
       alert('Cette version est publiée et verrouillée en lecture seule (R35).');
@@ -121,10 +124,13 @@ export default function App() {
   }, [currentVersion.status, userRole]);
 
   
-  const handleQuickAssign = useCallback((employeeId: string, date: string, shiftCode: string) => {
+  const handleQuickAssign = useCallback((employeeOrId: Employee | string, date: string, shiftCode: string) => {
     if (!currentVersion) return;
     if (currentVersion.status === 'PUBLISHED' && userRole !== 'ADMIN') return;
     if (userRole === 'VIEWER') return;
+
+    const employeeId = typeof employeeOrId === 'string' ? employeeOrId : employeeOrId?.id;
+    if (!employeeId) return;
 
     const emp = employees.find(e => e.id === employeeId);
     const shift = shifts.find(s => s.code === shiftCode);
@@ -132,8 +138,17 @@ export default function App() {
 
     // Check Authorization
     let isAuthorized = true;
-    if (shift.type !== 'absence' && shift.code !== 'OFF') {
-      isAuthorized = emp.qualifications.some(q => q.shiftCode === shift.code && q.status === 'VALID');
+    if (emp.arrivalDate && date < emp.arrivalDate) {
+      isAuthorized = false;
+    } else if (emp.departureDate && date > emp.departureDate) {
+      isAuthorized = false;
+    } else if (shift.type === 'travail') {
+      const qual = qualifications.find(
+        q => q.employeeId === employeeId && q.shiftCode === shift.code
+      );
+      if (!qual || qual.status === 'NOT_AUTHORIZED') {
+        isAuthorized = false;
+      }
     }
 
     if (!isAuthorized) {
@@ -175,7 +190,7 @@ export default function App() {
     const updatedVersions = versions.map(v => (v.id === currentVersion.id ? updatedVersion : v));
     setVersions(updatedVersions);
     StorageService.saveVersions(updatedVersions);
-  }, [currentVersion, userRole, employees, shifts, versions]);
+  }, [currentVersion, userRole, employees, shifts, qualifications, versions]);
 
 
   const handleSaveAssignment = useCallback((shiftCode: string, isOverride: boolean, overrideReason: string, comment: string) => {
@@ -479,7 +494,9 @@ export default function App() {
             shifts={shifts}
             qualifications={qualifications}
             coverageRequirements={coverageRequirements}
+            payPeriods={payPeriods}
             userRole={userRole}
+            issues={evaluation.issues}
             evaluationIssues={evaluation.issues}
             statsByEmployee={evaluation.statsByEmployee}
             dailyCoverage={evaluation.dailyCoverage}

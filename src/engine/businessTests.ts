@@ -263,7 +263,7 @@ export class BusinessTestsRunner {
         payPeriods: INITIAL_PAY_PERIODS
       });
 
-      const hasDeficitWarning = sum.warningIssues.some(i => i.ruleId.startsWith('R0'));
+      const hasDeficitWarning = (sum?.warningIssues || []).some(i => i.ruleId.startsWith('R0'));
       results.push({
         id: 8,
         title: 'Règles R06-R09 & R33 — Détection des déficits de couverture opérationnelle',
@@ -364,7 +364,7 @@ export class BusinessTestsRunner {
       });
 
       // Since override is provided with reason, R01 HARD is downgraded / bypassed, no unreasoned override
-      const noUnreasonedIssue = !sum.hardIssues.some(i => i.ruleId === 'R36');
+      const noUnreasonedIssue = !(sum?.hardIssues || []).some(i => i.ruleId === 'R36');
       const passed = noUnreasonedIssue && asgWithReason.overrideReason !== undefined;
       results.push({
         id: 11,
@@ -403,7 +403,7 @@ export class BusinessTestsRunner {
       );
 
       // Verify that NO employee with NOT_AUTHORIZED for S3 was assigned S3
-      const badS3 = genResult.assignments.some(a => {
+      const badS3 = (genResult?.assignments || []).some(a => {
         if (a.shiftCode === 'S3') {
           const q = INITIAL_QUALIFICATIONS.find(x => x.employeeId === a.employeeId && x.shiftCode === 'S3');
           return q?.status === 'NOT_AUTHORIZED';
