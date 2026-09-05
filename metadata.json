@@ -1,0 +1,8 @@
+{
+  "name": "NovaSched",
+  "description": "Système de planification d\u0027équipes avec visuel tableur, moteur de règles, validation des contraintes, équilibrage de charge et génération automatique.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
