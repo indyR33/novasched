@@ -134,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-4 h-4 border-2 border-white rounded-xs"></div>
           </div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-[#1E293B]">smart Planning</h1>
+            <h1 className="text-xl font-bold tracking-tight text-[#1E293B]">NovaSched - smart Planning</h1>
             <div className="hidden sm:flex items-center gap-1.5">
               <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]">
                 v{currentVersion?.versionNumber || 1} • {currentVersion?.name || (isEn ? 'Standard Cycle' : 'Cycle Standard')}
