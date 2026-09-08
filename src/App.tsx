@@ -486,7 +486,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 w-full max-w-full px-2 sm:px-4 md:px-6 py-4">
         {activeTab === 'PLANNING' && (
           <PlanningGrid
             version={currentVersion}

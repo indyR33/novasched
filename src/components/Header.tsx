@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-xs">
       {/* Top Primary Bar */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="w-full px-2 sm:px-4 md:px-6 h-16 flex items-center justify-between gap-4">
         {/* Brand & Version Badge */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#3B82F6] rounded-lg flex items-center justify-center text-white shadow-xs">
@@ -310,7 +310,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Navigation Subbar with Theme Tabs */}
       <div className="bg-white border-t border-[#E2E8F0]">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto py-1.5 text-xs">
+        <div className="w-full px-2 sm:px-4 md:px-6 flex items-center gap-1 overflow-x-auto py-1.5 text-xs">
           <button
             id="tab-planning"
             onClick={() => setTab('PLANNING')}

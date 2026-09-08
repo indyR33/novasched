@@ -128,8 +128,8 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
   const [selectedTeam, setSelectedTeam] = useState<string>('ALL');
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   
-  // View mode: Month, 14-days (Fortnight), Week, or Custom Range
-  const [viewMode, setViewMode] = useState<'MONTH' | 'FORTNIGHT' | 'WEEK' | 'CUSTOM'>('MONTH');
+  // View mode: 2-Months, Month, 14-days (Fortnight), Week, or Custom Range
+  const [viewMode, setViewMode] = useState<'TWO_MONTHS' | 'MONTH' | 'FORTNIGHT' | 'WEEK' | 'CUSTOM'>('MONTH');
 
   // Active date cursor for navigating through calendar
   const [currentDate, setCurrentDate] = useState<Date>(() => {
@@ -197,7 +197,23 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
   // Generate displayed dates dynamically based on viewMode and selected calendar window
   const displayedDates = useMemo(() => {
     const dates: string[] = [];
-    if (viewMode === 'MONTH') {
+    if (viewMode === 'TWO_MONTHS') {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      // Month 1
+      const lastDay1 = new Date(year, month + 1, 0).getDate();
+      for (let day = 1; day <= lastDay1; day++) {
+        dates.push(formatIsoDate(new Date(year, month, day)));
+      }
+      // Month 2
+      const nextMonthDate = new Date(year, month + 1, 1);
+      const year2 = nextMonthDate.getFullYear();
+      const month2 = nextMonthDate.getMonth();
+      const lastDay2 = new Date(year2, month2 + 1, 0).getDate();
+      for (let day = 1; day <= lastDay2; day++) {
+        dates.push(formatIsoDate(new Date(year2, month2, day)));
+      }
+    } else if (viewMode === 'MONTH') {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const lastDay = new Date(year, month + 1, 0).getDate();
@@ -248,6 +264,18 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
 
   // Label summarizing active displayed date window
   const activePeriodLabel = useMemo(() => {
+    if (viewMode === 'TWO_MONTHS') {
+      const mNames = isEn ? MONTHS_EN : MONTHS_FR;
+      const m1 = currentDate.getMonth();
+      const y1 = currentDate.getFullYear();
+      const nextMonthDate = new Date(y1, m1 + 1, 1);
+      const m2 = nextMonthDate.getMonth();
+      const y2 = nextMonthDate.getFullYear();
+      if (y1 === y2) {
+        return `${mNames[m1]} – ${mNames[m2]} ${y1}`;
+      }
+      return `${mNames[m1]} ${y1} – ${mNames[m2]} ${y2}`;
+    }
     if (viewMode === 'MONTH') {
       const mNames = isEn ? MONTHS_EN : MONTHS_FR;
       return `${mNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
@@ -270,7 +298,13 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
 
   // Navigation handlers
   const handlePrevPeriod = () => {
-    if (viewMode === 'MONTH') {
+    if (viewMode === 'TWO_MONTHS') {
+      const d = new Date(currentDate);
+      d.setMonth(d.getMonth() - 2);
+      setCurrentDate(d);
+      setCalendarYear(d.getFullYear());
+      setCalendarMonth(d.getMonth());
+    } else if (viewMode === 'MONTH') {
       const d = new Date(currentDate);
       d.setMonth(d.getMonth() - 1);
       setCurrentDate(d);
@@ -306,7 +340,13 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
   };
 
   const handleNextPeriod = () => {
-    if (viewMode === 'MONTH') {
+    if (viewMode === 'TWO_MONTHS') {
+      const d = new Date(currentDate);
+      d.setMonth(d.getMonth() + 2);
+      setCurrentDate(d);
+      setCalendarYear(d.getFullYear());
+      setCalendarMonth(d.getMonth());
+    } else if (viewMode === 'MONTH') {
       const d = new Date(currentDate);
       d.setMonth(d.getMonth() + 1);
       setCurrentDate(d);
@@ -646,6 +686,17 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
 
         {/* Right: View Mode Switches */}
         <div className="inline-flex rounded-xl border border-[#E2E8F0] p-1 bg-[#F1F5F9] text-xs font-semibold">
+          <button
+            id="grid-view-two-months"
+            onClick={() => setViewMode('TWO_MONTHS')}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              viewMode === 'TWO_MONTHS'
+                ? 'bg-white text-[#3B82F6] shadow-xs font-bold'
+                : 'text-[#64748B] hover:text-[#1E293B]'
+            }`}
+          >
+            {isEn ? '2 Months' : '2 Mois'}
+          </button>
           <button
             id="grid-view-month"
             onClick={() => setViewMode('MONTH')}
@@ -1021,14 +1072,14 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
       </div>
 
       {/* Main Interactive Matrix */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
-        <div className="overflow-x-auto max-h-[640px] relative">
-          <table className="w-full border-collapse text-left text-xs">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden w-full">
+        <div className="overflow-x-auto max-h-[calc(100vh-250px)] min-h-[520px] relative w-full">
+          <table className="w-full border-collapse text-left text-xs table-auto">
             {/* Table Header */}
             <thead className="bg-[#F8FAFC] text-[#64748B] font-semibold border-b border-[#E2E8F0] sticky top-0 z-20">
               <tr>
                 {/* Employee column pinned */}
-                <th className="py-2.5 px-3 w-52 min-w-[200px] sticky left-0 bg-[#F8FAFC] z-30 border-r border-[#E2E8F0] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
+                <th className="py-2.5 px-3 w-52 min-w-[190px] lg:w-60 lg:min-w-[210px] sticky left-0 bg-[#F8FAFC] z-30 border-r border-[#E2E8F0] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
                   <div className="flex items-center justify-between">
                     <span className="text-[#1E293B] font-bold">
                       {isEn ? `Collaborator (${filteredEmployees.length})` : `Collaborateur (${filteredEmployees.length})`}
@@ -1040,7 +1091,7 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
                 </th>
 
                 {/* Key counters column */}
-                <th className="py-2.5 px-2 w-28 min-w-[110px] text-center bg-[#F1F5F9]/80 border-r border-[#E2E8F0]">
+                <th className="py-2.5 px-2 w-28 min-w-[105px] text-center bg-[#F1F5F9]/80 border-r border-[#E2E8F0]">
                   <div className="text-[10px] text-[#64748B] font-medium">{isEn ? 'Totals' : 'Cumuls'}</div>
                   <div className="text-[11px] text-[#1E293B] font-bold">{isEn ? 'Hours • S3 • Sun' : 'Heures • S3 • Dim'}</div>
                 </th>
@@ -1054,7 +1105,7 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
                   return (
                     <th
                       key={dateStr}
-                      className={`py-2 px-1 text-center min-w-[42px] border-r border-[#F1F5F9] select-none ${
+                      className={`py-2 px-1 text-center min-w-[36px] sm:min-w-[40px] border-r border-[#F1F5F9] select-none ${
                         h.isSunday
                           ? 'bg-[#FEF2F2] text-[#EF4444]'
                           : h.isWeekend
@@ -1149,7 +1200,7 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
                           {asg ? (
                             <div
                               id={`cell-${emp.id}-${dateStr}`}
-                              className={`relative group px-1 py-1 rounded-md border text-[11px] font-bold tracking-tight transition-all shadow-2xs ${
+                              className={`w-full min-h-[28px] flex items-center justify-center relative group px-1 py-1 rounded-md border text-[11px] font-bold tracking-tight transition-all shadow-2xs ${
                                 shift?.colorBg || 'bg-slate-100'
                               } ${shift?.colorText || 'text-slate-800'} ${
                                 hasHardIssue
@@ -1179,7 +1230,7 @@ export const PlanningGrid: React.FC<PlanningGridProps> = ({
                               )}
                             </div>
                           ) : (
-                            <div className="h-6 rounded border border-dashed border-slate-200 hover:border-indigo-400 flex items-center justify-center text-[10px] text-slate-300 font-mono">
+                            <div className="h-7 w-full rounded border border-dashed border-slate-200 hover:border-indigo-400 flex items-center justify-center text-[10px] text-slate-300 font-mono">
                               -
                             </div>
                           )}
