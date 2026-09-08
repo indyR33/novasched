@@ -26,6 +26,7 @@ import {
   INITIAL_RULES,
   INITIAL_PLANNING_VERSION
 } from '../data/initialData';
+import { FirestoreService } from './firestoreService';
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'smart_planning_employees_v1',
@@ -57,6 +58,9 @@ export class StorageService {
 
   public static saveEmployees(employees: Employee[]): void {
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+    FirestoreService.saveAllEmployees(employees).catch(err => {
+      console.warn('Firestore sync employees warning:', err);
+    });
   }
 
   public static loadShifts(): Shift[] {
@@ -74,6 +78,9 @@ export class StorageService {
 
   public static saveShifts(shifts: Shift[]): void {
     localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
+    FirestoreService.saveAllShifts(shifts).catch(err => {
+      console.warn('Firestore sync shifts warning:', err);
+    });
   }
 
   public static loadQualifications(): Qualification[] {
@@ -91,6 +98,9 @@ export class StorageService {
 
   public static saveQualifications(qualifications: Qualification[]): void {
     localStorage.setItem(STORAGE_KEYS.QUALIFICATIONS, JSON.stringify(qualifications));
+    FirestoreService.saveAllQualifications(qualifications).catch(err => {
+      console.warn('Firestore sync qualifications warning:', err);
+    });
   }
 
   public static loadCoverage(): CoverageRequirement[] {
@@ -108,6 +118,9 @@ export class StorageService {
 
   public static saveCoverage(coverage: CoverageRequirement[]): void {
     localStorage.setItem(STORAGE_KEYS.COVERAGE, JSON.stringify(coverage));
+    FirestoreService.saveAllCoverage(coverage).catch(err => {
+      console.warn('Firestore sync coverage warning:', err);
+    });
   }
 
   public static loadRotations(): RotationPattern[] {
@@ -125,6 +138,9 @@ export class StorageService {
 
   public static saveRotations(rotations: RotationPattern[]): void {
     localStorage.setItem(STORAGE_KEYS.ROTATIONS, JSON.stringify(rotations));
+    FirestoreService.saveAllRotations(rotations).catch(err => {
+      console.warn('Firestore sync rotations warning:', err);
+    });
   }
 
   public static loadPayPeriods(): PayPeriod[] {
@@ -142,6 +158,9 @@ export class StorageService {
 
   public static savePayPeriods(periods: PayPeriod[]): void {
     localStorage.setItem(STORAGE_KEYS.PAY_PERIODS, JSON.stringify(periods));
+    FirestoreService.saveAllPayPeriods(periods).catch(err => {
+      console.warn('Firestore sync pay periods warning:', err);
+    });
   }
 
   public static loadRules(): RuleDefinition[] {
@@ -159,6 +178,9 @@ export class StorageService {
 
   public static saveRules(rules: RuleDefinition[]): void {
     localStorage.setItem(STORAGE_KEYS.RULES, JSON.stringify(rules));
+    FirestoreService.saveAllRules(rules).catch(err => {
+      console.warn('Firestore sync rules warning:', err);
+    });
   }
 
   public static loadVersions(): PlanningVersion[] {
@@ -176,6 +198,9 @@ export class StorageService {
 
   public static saveVersions(versions: PlanningVersion[]): void {
     localStorage.setItem(STORAGE_KEYS.VERSIONS, JSON.stringify(versions));
+    FirestoreService.saveAllVersions(versions).catch(err => {
+      console.warn('Firestore sync versions warning:', err);
+    });
   }
 
   public static loadAuditLogs(): AuditLogEntry[] {
@@ -203,6 +228,11 @@ export class StorageService {
 
   public static saveAuditLogs(logs: AuditLogEntry[]): void {
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs.slice(-500))); // Keep last 500
+    if (logs.length > 0) {
+      FirestoreService.saveAuditLog(logs[0]).catch(err => {
+        console.warn('Firestore sync audit log warning:', err);
+      });
+    }
   }
 
   public static logAction(
@@ -261,6 +291,9 @@ export class StorageService {
 
   public static setActiveVersionId(id: string): void {
     localStorage.setItem(STORAGE_KEYS.CURRENT_VERSION_ID, id);
+    FirestoreService.saveActiveVersionId(id).catch(err => {
+      console.warn('Firestore sync active version warning:', err);
+    });
   }
 
   public static addAuditLog(action: string, actor: string, details: string, reason?: string): void {

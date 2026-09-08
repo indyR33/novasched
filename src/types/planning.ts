@@ -180,6 +180,8 @@ export interface GenerationConfig {
   startDate: string;
   endDate: string;
   respectRotations: boolean;
+  selectedRotationPatternId?: string;
+  rotationStaggerMode?: 'EMPLOYEE_STAGGERED' | 'TEAM_STAGGERED' | 'UNIFORM';
   balanceS3: boolean;
   balanceSundays: boolean;
   balanceHours: boolean;

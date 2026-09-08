@@ -1,0 +1,191 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all (Pillar 1)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Security Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == 'richard.digonal@gmail.com');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'richard.digonal@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity validation helpers
+    function isValidPlanningVersion(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+        data.startDate is string && data.startDate.size() <= 10 &&
+        data.endDate is string && data.endDate.size() <= 10 &&
+        data.status in ['DRAFT', 'SIMULATION', 'PUBLISHED', 'ARCHIVED'] &&
+        data.assignments is list && data.assignments.size() <= 2000;
+    }
+
+    function isValidEmployee(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.matricule is string && data.matricule.size() > 0 && data.matricule.size() <= 32 &&
+        data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 100 &&
+        data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 100 &&
+        data.isActive is bool &&
+        data.weeklyContractHours is number && data.weeklyContractHours >= 0 && data.weeklyContractHours <= 60;
+    }
+
+    function isValidShift(data) {
+      return data.code is string && isValidId(data.code) &&
+        data.label is string && data.label.size() > 0 && data.label.size() <= 100 &&
+        data.startTime is string && data.startTime.size() <= 8 &&
+        data.endTime is string && data.endTime.size() <= 8 &&
+        data.countedHours is number && data.countedHours >= 0 && data.countedHours <= 24 &&
+        data.family is string && data.family.size() <= 16 &&
+        data.isActive is bool;
+    }
+
+    function isValidQualification(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.employeeId is string && isValidId(data.employeeId) &&
+        data.shiftCode is string && isValidId(data.shiftCode) &&
+        data.status in ['AUTHORIZED', 'CONDITIONAL', 'NOT_AUTHORIZED'];
+    }
+
+    function isValidCoverageRequirement(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.date is string && data.date.size() <= 32 &&
+        data.subFamily is string && data.subFamily.size() <= 32 &&
+        data.minimum is number && data.minimum >= 0 && data.minimum <= 100 &&
+        data.priority in ['HAUTE', 'MOYENNE', 'BASSE'];
+    }
+
+    function isValidRotationPattern(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.cycleLength is number && data.cycleLength >= 1 && data.cycleLength <= 60 &&
+        data.steps is list && data.steps.size() <= 60 &&
+        data.isActive is bool;
+    }
+
+    function isValidRuleDefinition(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.code is string && data.code.size() <= 32 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.category in ['HABILITATION', 'CONTRAT', 'COUVERTURE', 'EQUILIBRAGE', 'ROTATION', 'SYSTEME'] &&
+        data.currentLevel in ['HARD', 'WARNING', 'OPTIMISATION', 'INFO', 'A_VALIDER'] &&
+        data.isEnabled is bool;
+    }
+
+    function isValidPayPeriod(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.number is number && data.number >= 1 && data.number <= 54 &&
+        data.year is number && data.year >= 2020 && data.year <= 2100 &&
+        data.startDate is string && data.startDate.size() <= 10 &&
+        data.endDate is string && data.endDate.size() <= 10 &&
+        data.status in ['OPEN', 'CLOSED', 'ARCHIVED'];
+    }
+
+    function isValidAuditLog(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.timestamp is string && data.timestamp.size() <= 40 &&
+        data.action is string && data.action.size() <= 64 &&
+        data.summary is string && data.summary.size() <= 500;
+    }
+
+    function isValidSystemSetting(data) {
+      return data.id is string && isValidId(data.id);
+    }
+
+    // 1. Planning Versions
+    match /planning_versions/{versionId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && isVerified() && isValidId(versionId) && isValidPlanningVersion(incoming());
+      allow update: if isSignedIn() && isVerified() && isValidId(versionId) && isValidPlanningVersion(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 2. Employees
+    match /employees/{employeeId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(employeeId) && isValidEmployee(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 3. Shifts
+    match /shifts/{shiftCode} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(shiftCode) && isValidShift(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 4. Qualifications
+    match /qualifications/{qualificationId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(qualificationId) && isValidQualification(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 5. Coverage Requirements
+    match /coverage_requirements/{reqId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(reqId) && isValidCoverageRequirement(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 6. Rotation Patterns
+    match /rotation_patterns/{patternId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(patternId) && isValidRotationPattern(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 7. Rules Definitions
+    match /rules/{ruleId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(ruleId) && isValidRuleDefinition(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 8. Pay Periods
+    match /pay_periods/{periodId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(periodId) && isValidPayPeriod(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 9. Audit Logs (Immutable append-only trail)
+    match /audit_logs/{logId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isVerified() && isValidId(logId) && isValidAuditLog(incoming());
+      allow update, delete: if false; // Strict audit immutability
+    }
+
+    // 10. System Settings
+    match /settings/{settingId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && isVerified() && isValidId(settingId) && isValidSystemSetting(incoming());
+      allow delete: if isAdmin();
+    }
+  }
+}

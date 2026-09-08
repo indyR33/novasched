@@ -20,7 +20,12 @@ import {
   Lock,
   RotateCcw,
   Search,
-  Globe
+  Globe,
+  Cloud,
+  RefreshCw,
+  Database,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { UserRole, PlanningVersion } from '../types/planning';
 
@@ -51,6 +56,12 @@ export interface HeaderProps {
   onResetData?: () => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  cloudSyncStatus?: 'CONNECTED' | 'SYNCING' | 'ERROR' | 'OFFLINE';
+  lastCloudSync?: string;
+  onTriggerCloudSync?: () => void;
+  authUser?: { email: string | null; displayName: string | null; photoURL: string | null } | null;
+  onLogin?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -76,7 +87,13 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuditModal,
   onResetData,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  cloudSyncStatus = 'CONNECTED',
+  lastCloudSync,
+  onTriggerCloudSync,
+  authUser,
+  onLogin,
+  onLogout
 }) => {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language.startsWith('en');
@@ -272,6 +289,36 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
+          {/* Firestore Cloud Sync Status Button */}
+          {onTriggerCloudSync && (
+            <button
+              id="header-cloud-sync-btn"
+              onClick={onTriggerCloudSync}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                cloudSyncStatus === 'SYNCING'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                  : cloudSyncStatus === 'ERROR'
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+              }`}
+              title={
+                lastCloudSync
+                  ? `Firestore Cloud: ${lastCloudSync}. Cliquez pour synchroniser.`
+                  : 'Persistance Firestore Cloud active. Cliquez pour synchroniser.'
+              }
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden lg:inline">
+                {cloudSyncStatus === 'SYNCING'
+                  ? (isEn ? 'Syncing...' : 'Synchro...')
+                  : cloudSyncStatus === 'ERROR'
+                  ? (isEn ? 'Cloud Error' : 'Erreur Cloud')
+                  : 'Firestore Cloud'}
+              </span>
+              <span className={`w-2 h-2 rounded-full ${cloudSyncStatus === 'CONNECTED' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-amber-400'}`}></span>
+            </button>
+          )}
+
           {/* Language Switcher */}
           <div className="flex items-center gap-1 pl-2 border-l border-[#E2E8F0]">
             <Globe className="w-4 h-4 text-[#64748B]" />
@@ -285,11 +332,57 @@ export const Header: React.FC<HeaderProps> = ({
             </select>
           </div>
 
-          {/* User Profile / Role Switcher */}
+          {/* Google Auth & User Profile */}
           <div className="flex items-center gap-2 pl-2 border-l border-[#E2E8F0]">
-            <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center text-xs font-semibold text-[#1E293B]">
-              {userInitials}
-            </div>
+            {authUser ? (
+              <div className="flex items-center gap-1.5">
+                {authUser.photoURL ? (
+                  <img
+                    src={authUser.photoURL}
+                    alt="Avatar"
+                    className="w-7 h-7 rounded-full border border-[#CBD5E1]"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">
+                    {authUser.email?.substring(0, 2).toUpperCase() || userInitials}
+                  </div>
+                )}
+                <div className="hidden 2xl:flex flex-col text-left">
+                  <span className="text-[11px] font-medium text-[#1E293B] max-w-[120px] truncate" title={authUser.email || ''}>
+                    {authUser.displayName || authUser.email}
+                  </span>
+                  <span className="text-[9px] text-emerald-600 font-semibold">Connecté Cloud</span>
+                </div>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                    title={isEn ? 'Sign out' : 'Se déconnecter'}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              onLogin && (
+                <button
+                  id="header-login-btn"
+                  onClick={onLogin}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#1E293B] border border-[#CBD5E1] transition-colors"
+                  title={isEn ? 'Sign in with Google' : 'Se connecter avec Google'}
+                >
+                  <LogIn className="w-3.5 h-3.5 text-[#3B82F6]" />
+                  <span className="hidden sm:inline">Google</span>
+                </button>
+              )
+            )}
+
+            {!authUser && (
+              <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center text-xs font-semibold text-[#1E293B]">
+                {userInitials}
+              </div>
+            )}
             <div className="hidden xl:flex flex-col text-left">
               <span className="text-xs font-semibold text-[#1E293B] leading-tight">{userName}</span>
               <span className="text-[10px] text-[#64748B] leading-tight">{userRole}</span>

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Zap, ShieldCheck, AlertTriangle, HelpCircle, Check, ArrowRight } from 'lucide-react';
+import { X, Zap, ShieldCheck, AlertTriangle, Check, ArrowRight, RotateCcw, Layers, Info } from 'lucide-react';
 import {
   Employee,
   Shift,
@@ -44,12 +44,18 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   existingAssignments,
   onApplyAssignments
 }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isEn = i18n.language.startsWith('en');
 
   const [genStartDate, setGenStartDate] = useState(startDate);
   const [genEndDate, setGenEndDate] = useState(endDate);
   const [respectRotations, setRespectRotations] = useState(true);
+
+  // Active rotation pattern selection
+  const defaultPattern = rotationPatterns.find(p => p.isActive) || rotationPatterns[0];
+  const [selectedRotationId, setSelectedRotationId] = useState<string>(defaultPattern?.id || '');
+  const [staggerMode, setStaggerMode] = useState<'EMPLOYEE_STAGGERED' | 'TEAM_STAGGERED' | 'UNIFORM'>('EMPLOYEE_STAGGERED');
+
   const [consecutiveDaysLimit, setConsecutiveDaysLimit] = useState(6);
   const [s3Weight, setS3Weight] = useState(3);
   const [sundayWeight, setSundayWeight] = useState(2);
@@ -60,16 +66,20 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
 
   if (!isOpen) return null;
 
+  const currentPattern = rotationPatterns.find(p => p.id === selectedRotationId) || defaultPattern;
+
   const handleRun = () => {
     setIsRunning(true);
     setResult(null);
 
-    // Simulate micro-turn for visual responsiveness
+    // Micro-delay for visual responsiveness
     setTimeout(() => {
       const config: GenerationConfig = {
         startDate: genStartDate,
         endDate: genEndDate,
         respectRotations,
+        selectedRotationPatternId: selectedRotationId,
+        rotationStaggerMode: staggerMode,
         balanceS3: true,
         balanceSundays: true,
         balanceHours: true,
@@ -117,7 +127,7 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
                 {isEn ? 'Automatic Schedule Generator' : 'Générateur Automatique de Planning'}
               </h3>
               <p className="text-xs text-[#64748B]">
-                {isEn ? 'Deterministic constraint engine with workload balancing' : 'Moteur de contraintes déterministe avec équilibrage'}
+                {isEn ? 'Rotation grid priority engine with strict regulatory constraint enforcement' : 'Moteur déterministe avec application prioritaire de la grille de rotation'}
               </p>
             </div>
           </div>
@@ -157,6 +167,111 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
             </div>
           </div>
 
+          {/* ROTATION PATTERN PRIORITY CONFIGURATION */}
+          <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-[#1E293B] text-xs">
+                    {isEn ? 'Rotation Grid from "Coverage"' : 'Grille de rotation issue de « Couverture »'}
+                  </h4>
+                  <p className="text-[11px] text-[#64748B]">
+                    {isEn ? 'Apply cyclic rotation sequence in priority' : 'Déroulement du cycle de travail/repos en priorité 1'}
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={respectRotations}
+                  onChange={e => setRespectRotations(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                <span className="ml-2 text-xs font-semibold text-slate-700">
+                  {respectRotations ? (isEn ? 'Active' : 'Prioritaire') : (isEn ? 'Inactive' : 'Désactivée')}
+                </span>
+              </label>
+            </div>
+
+            {respectRotations && (
+              <div className="space-y-2.5 pt-2 border-t border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      {isEn ? 'Selected rotation pattern:' : 'Modèle de rotation appliqué :'}
+                    </label>
+                    <select
+                      value={selectedRotationId}
+                      onChange={e => setSelectedRotationId(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 font-medium focus:ring-1 focus:ring-blue-500"
+                    >
+                      {rotationPatterns.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.cycleLength}j) {p.isActive ? (isEn ? '• Active' : '• Actif') : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      {isEn ? 'Phase staggering mode:' : 'Mode de décalage de roulement :'}
+                    </label>
+                    <select
+                      value={staggerMode}
+                      onChange={e => setStaggerMode(e.target.value as any)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 font-medium focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="EMPLOYEE_STAGGERED">
+                        {isEn ? 'Continuous stagger per agent (recommended)' : 'Échelonné par agent (recommandé, couverture lissée)'}
+                      </option>
+                      <option value="TEAM_STAGGERED">
+                        {isEn ? 'Staggered by team (Team A, Team B)' : 'Échelonné par équipe (Équipe A, Équipe B...)'}
+                      </option>
+                      <option value="UNIFORM">
+                        {isEn ? 'Uniform (all start at Day 1)' : 'Uniforme (tous au même jour)'}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Steps visual preview */}
+                {currentPattern && currentPattern.steps && (
+                  <div className="bg-white/80 p-2.5 rounded-lg border border-blue-200/70">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold mb-1.5">
+                      <span>{isEn ? 'Sequence cycle preview:' : 'Séquence du cycle sélectionné :'}</span>
+                      <span className="font-mono text-blue-700 font-bold">
+                        {currentPattern.cycleLength} {isEn ? 'days' : 'jours'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {currentPattern.steps.map((s, idx) => (
+                        <div
+                          key={idx}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border text-center ${
+                            s.isRest || s.suggestedShiftCode === 'OFF'
+                              ? 'bg-slate-100 border-slate-300 text-slate-600'
+                              : s.suggestedShiftCode === 'S3'
+                              ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                              : 'bg-amber-50 border-amber-200 text-amber-800'
+                          }`}
+                        >
+                          <span className="text-[9px] opacity-70 mr-0.5">J{idx + 1}:</span>
+                          <span>{s.isRest ? 'OFF' : (s.suggestedShiftCode || s.requiredFamily)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Hard Constraints Guarantee */}
           <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 text-slate-700 space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-indigo-950">
@@ -179,7 +294,7 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
           {/* Optimization Weights Sliders (Section 14 & 23) */}
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <span className="font-bold text-slate-900 block uppercase tracking-wider text-[11px]">
-              {isEn ? 'Optimization Objectives Weighting' : "Pondération des Objectifs d'Optimisation"}
+              {isEn ? 'Optimization Objectives Weighting (Coverage Complement)' : "Pondération des Objectifs d'Équilibrage"}
             </span>
 
             {/* S3 weight */}
@@ -235,11 +350,31 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
           {result && (
             <div className="pt-3 border-t border-slate-200">
               {result.success ? (
-                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-900 font-bold">
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    <span>{isEn ? 'Feasible schedule successfully generated!' : 'Planning réalisable généré avec succès !'}</span>
+                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-900 font-bold">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>{isEn ? 'Feasible schedule successfully generated!' : 'Planning conforme généré avec succès !'}</span>
+                    </div>
+
+                    {result.summary.rotationAdherencePercentage !== undefined && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px]">
+                        {result.summary.rotationAdherencePercentage}% {isEn ? 'rotation adherence' : 'adhérence grille'}
+                      </span>
+                    )}
                   </div>
+
+                  {result.summary.appliedRotationPatternName && (
+                    <div className="text-[11px] text-emerald-900 bg-white/70 p-2 rounded-lg border border-emerald-200 flex items-center justify-between">
+                      <span>
+                        <strong>{isEn ? 'Pattern:' : 'Grille appliquée :'}</strong> {result.summary.appliedRotationPatternName}
+                      </span>
+                      <span className="text-[10px] text-emerald-700">
+                        {result.summary.rotationAppliedCount} {isEn ? 'direct cycle matches' : 'affectations directes cycle'} • {result.summary.rotationAdjustmentsCount || 0} {isEn ? 'legal adjustments' : 'ajustements de sécurité'}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-emerald-800 font-mono">
                     <div className="bg-white/80 p-1.5 rounded border border-emerald-200 text-center">
                       <div className="text-[10px] text-slate-500">{isEn ? 'Assignments' : 'Affectations'}</div>

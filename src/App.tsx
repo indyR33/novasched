@@ -18,6 +18,9 @@ import {
   QualificationStatus
 } from './types/planning';
 import { StorageService } from './services/storage';
+import { FirestoreService } from './services/firestoreService';
+import { auth, loginWithGoogle, logoutFirebase, testFirestoreConnection } from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { RulesEngine } from './engine/rulesEngine';
 
 import { Header } from './components/Header';
@@ -36,8 +39,11 @@ import { ImportExportModal } from './components/ImportExportModal';
 import { TestsRunnerModal } from './components/TestsRunnerModal';
 
 export default function App() {
-  // 1. Roles and Navigation
+  // 1. Roles, Auth and Navigation
   const [userRole, setUserRole] = useState<UserRole>('ADMIN');
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'CONNECTED' | 'SYNCING' | 'ERROR' | 'OFFLINE'>('CONNECTED');
+  const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'PLANNING' | 'DASHBOARD' | 'EMPLOYEES' | 'SHIFTS' | 'RULES' | 'COVERAGE'>('PLANNING');
 
   // 2. Core domain state from StorageService
@@ -106,6 +112,149 @@ export default function App() {
       StorageService.saveVersions(updated);
     }
   }, [evaluation.score, currentVersion?.id]);
+
+  // Bootstrap Firestore connection test and initial data hydration
+  useEffect(() => {
+    // 1. Connection test as required by SKILL.md
+    testFirestoreConnection();
+
+    // 2. Auth listener
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      setAuthUser(user);
+      if (user?.email?.toLowerCase() === 'richard.digonal@gmail.com') {
+        setUserRole('ADMIN');
+      }
+      if (user) {
+        try {
+          const cloudData = await FirestoreService.fetchAllFromFirestore();
+          if (!cloudData.versions || cloudData.versions.length === 0) {
+            await FirestoreService.syncAllToFirestore({
+              versions: StorageService.getVersions(),
+              employees: StorageService.getEmployees(),
+              shifts: StorageService.getShifts(),
+              qualifications: StorageService.getQualifications(),
+              coverageRequirements: StorageService.getCoverageRequirements(),
+              rotationPatterns: StorageService.getRotationPatterns(),
+              rules: StorageService.getRules(),
+              payPeriods: StorageService.getPayPeriods(),
+              activeVersionId: StorageService.getActiveVersionId()
+            });
+          }
+          setLastCloudSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          setCloudSyncStatus('CONNECTED');
+        } catch (err) {
+          console.warn('Post-login cloud sync notice:', err);
+        }
+      }
+    });
+
+    // 3. Hydrate from Firestore or Seed initial data
+    const initCloud = async () => {
+      setCloudSyncStatus('SYNCING');
+      try {
+        const cloudData = await FirestoreService.fetchAllFromFirestore();
+        if (cloudData.versions && cloudData.versions.length > 0) {
+          setVersions(cloudData.versions);
+          if (cloudData.activeVersionId) setCurrentVersionId(cloudData.activeVersionId);
+          if (cloudData.employees && cloudData.employees.length > 0) setEmployees(cloudData.employees);
+          if (cloudData.shifts && cloudData.shifts.length > 0) setShifts(cloudData.shifts);
+          if (cloudData.qualifications && cloudData.qualifications.length > 0) setQualifications(cloudData.qualifications);
+          if (cloudData.coverage && cloudData.coverage.length > 0) setCoverageRequirements(cloudData.coverage);
+          if (cloudData.rotations && cloudData.rotations.length > 0) setRotationPatterns(cloudData.rotations);
+          if (cloudData.rules && cloudData.rules.length > 0) setRules(cloudData.rules);
+          setLastCloudSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          setCloudSyncStatus('CONNECTED');
+        } else if (auth.currentUser) {
+          // Empty remote database - Seed initial planning versions and settings to Firestore if signed in
+          await FirestoreService.syncAllToFirestore({
+            versions: StorageService.getVersions(),
+            employees: StorageService.getEmployees(),
+            shifts: StorageService.getShifts(),
+            qualifications: StorageService.getQualifications(),
+            coverageRequirements: StorageService.getCoverageRequirements(),
+            rotationPatterns: StorageService.getRotationPatterns(),
+            rules: StorageService.getRules(),
+            payPeriods: StorageService.getPayPeriods(),
+            activeVersionId: StorageService.getActiveVersionId()
+          });
+          setLastCloudSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          setCloudSyncStatus('CONNECTED');
+        } else {
+          setCloudSyncStatus('CONNECTED');
+        }
+      } catch (err) {
+        console.warn('Firestore initial sync notice:', err);
+        setCloudSyncStatus('CONNECTED');
+      }
+    };
+
+    initCloud();
+
+    // 4. Real-time subscription to planning versions
+    const unsubscribeVersions = FirestoreService.subscribeVersions(
+      (remoteVersions) => {
+        if (remoteVersions && remoteVersions.length > 0) {
+          setVersions(remoteVersions);
+          setLastCloudSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        }
+      },
+      (err) => {
+        console.warn('Firestore versions listener notice:', err);
+      }
+    );
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeVersions();
+    };
+  }, []);
+
+  const handleTriggerCloudSync = useCallback(async () => {
+    if (!auth.currentUser) {
+      try {
+        await loginWithGoogle();
+      } catch (err) {
+        console.warn('Google sign-in required for cloud sync:', err);
+      }
+      return;
+    }
+    setCloudSyncStatus('SYNCING');
+    try {
+      await FirestoreService.syncAllToFirestore({
+        versions,
+        employees,
+        shifts,
+        qualifications,
+        coverageRequirements,
+        rotationPatterns,
+        rules,
+        payPeriods,
+        activeVersionId: currentVersionId
+      });
+      setLastCloudSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setCloudSyncStatus('CONNECTED');
+    } catch (err) {
+      console.error('Manual Firestore sync error:', err);
+      setCloudSyncStatus('ERROR');
+      setTimeout(() => setCloudSyncStatus('CONNECTED'), 4000);
+    }
+  }, [versions, employees, shifts, qualifications, coverageRequirements, rotationPatterns, rules, payPeriods, currentVersionId]);
+
+  const handleLogin = useCallback(async () => {
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      console.error('Google Sign-in failed:', err);
+    }
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logoutFirebase();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  }, []);
 
   // 5. Handlers for Assignments
   const handleSelectCell = useCallback((employeeOrId: Employee | string, date: string) => {
@@ -433,11 +582,13 @@ export default function App() {
   const handleUpdateCoverage = (reqs: CoverageRequirement[]) => {
     setCoverageRequirements(reqs);
     StorageService.saveCoverageRequirements(reqs);
+    StorageService.addAuditLog('COVERAGE_MODIFIED', `${userRole} (Session)`, `Exigences de couverture mises à jour (${reqs.length} règles)`);
   };
 
   const handleUpdateRotations = (patterns: RotationPattern[]) => {
     setRotationPatterns(patterns);
     StorageService.saveRotationPatterns(patterns);
+    StorageService.addAuditLog('ROTATION_MODIFIED', `${userRole} (Session)`, `Motifs de rotation mis à jour (${patterns.length} cycles)`);
   };
 
   const handleImportData = (imported: any) => {
@@ -479,6 +630,12 @@ export default function App() {
         onOpenImportExport={() => setIsImportExportOpen(true)}
         onOpenTestsRunner={() => setIsTestsModalOpen(true)}
         onOpenGenerator={() => setIsGeneratorOpen(true)}
+        cloudSyncStatus={cloudSyncStatus}
+        lastCloudSync={lastCloudSync}
+        onTriggerCloudSync={handleTriggerCloudSync}
+        authUser={authUser}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
         onResetData={() => {
           StorageService.resetToFactoryDefaults();
           window.location.reload();
@@ -553,6 +710,7 @@ export default function App() {
           <CoverageManager
             coverageRequirements={coverageRequirements}
             rotationPatterns={rotationPatterns}
+            shifts={shifts}
             userRole={userRole}
             onUpdateCoverage={handleUpdateCoverage}
             onUpdateRotations={handleUpdateRotations}

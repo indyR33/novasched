@@ -1,0 +1,213 @@
+{
+  "entities": {
+    "PlanningVersion": {
+      "title": "PlanningVersion",
+      "description": "Planning version container holding calendar bounds, publication status, and grid assignments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 200 },
+        "startDate": { "type": "string", "maxLength": 10 },
+        "endDate": { "type": "string", "maxLength": 10 },
+        "status": { "type": "string", "enum": ["DRAFT", "SIMULATION", "PUBLISHED", "ARCHIVED"] },
+        "validationScore": { "type": "number" },
+        "assignments": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 40 },
+        "updatedAt": { "type": "string", "maxLength": 40 },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "startDate", "endDate", "status", "assignments"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Employee profile with contracts and operational attributes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "matricule": { "type": "string", "maxLength": 32 },
+        "lastName": { "type": "string", "maxLength": 100 },
+        "firstName": { "type": "string", "maxLength": 100 },
+        "arrivalDate": { "type": "string", "maxLength": 10 },
+        "departureDate": { "type": "string", "maxLength": 10 },
+        "isActive": { "type": "boolean" },
+        "team": { "type": "string", "maxLength": 64 },
+        "weeklyContractHours": { "type": "number" },
+        "comparisonGroup": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "matricule", "lastName", "firstName", "isActive", "weeklyContractHours"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "Shift definition and time parameters",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "label": { "type": "string", "maxLength": 100 },
+        "startTime": { "type": "string", "maxLength": 8 },
+        "endTime": { "type": "string", "maxLength": 8 },
+        "isOvernight": { "type": "boolean" },
+        "theoreticalDuration": { "type": "number" },
+        "countedHours": { "type": "number" },
+        "family": { "type": "string", "maxLength": 16 },
+        "subFamily": { "type": "string", "maxLength": 16 },
+        "type": { "type": "string", "maxLength": 32 },
+        "isActive": { "type": "boolean" },
+        "colorBg": { "type": "string", "maxLength": 32 },
+        "colorText": { "type": "string", "maxLength": 32 },
+        "colorBorder": { "type": "string", "maxLength": 32 },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["code", "label", "startTime", "endTime", "countedHours", "family", "isActive"]
+    },
+    "Qualification": {
+      "title": "Qualification",
+      "description": "Habilitation linking employee to permissible shift codes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "employeeId": { "type": "string", "maxLength": 128 },
+        "shiftCode": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["AUTHORIZED", "CONDITIONAL", "NOT_AUTHORIZED"] },
+        "conditionNote": { "type": "string", "maxLength": 300 },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "employeeId", "shiftCode", "status"]
+    },
+    "CoverageRequirement": {
+      "title": "CoverageRequirement",
+      "description": "Minimum and maximum staffing requirement per shift sub-family and date",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 32 },
+        "subFamily": { "type": "string", "maxLength": 32 },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "priority": { "type": "string", "enum": ["HAUTE", "MOYENNE", "BASSE"] },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "date", "subFamily", "minimum", "priority"]
+    },
+    "RotationPattern": {
+      "title": "RotationPattern",
+      "description": "Cyclic rotation pattern defining shifts and rest cadence",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "cycleLength": { "type": "number" },
+        "steps": { "type": "array" },
+        "isActive": { "type": "boolean" },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "cycleLength", "steps", "isActive"]
+    },
+    "RuleDefinition": {
+      "title": "RuleDefinition",
+      "description": "Configurable scheduling rule and strictness level",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "code": { "type": "string", "maxLength": 32 },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "category": { "type": "string", "maxLength": 32 },
+        "defaultLevel": { "type": "string", "maxLength": 32 },
+        "currentLevel": { "type": "string", "maxLength": 32 },
+        "isEnabled": { "type": "boolean" },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "code", "name", "category", "currentLevel", "isEnabled"]
+    },
+    "PayPeriod": {
+      "title": "PayPeriod",
+      "description": "Operational pay period bounds and status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "number": { "type": "number" },
+        "year": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 10 },
+        "endDate": { "type": "string", "maxLength": 10 },
+        "label": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED", "ARCHIVED"] },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "number", "year", "startDate", "endDate", "status"]
+    },
+    "AuditLogEntry": {
+      "title": "AuditLogEntry",
+      "description": "Immutable audit record capturing mutations and overrides",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "timestamp": { "type": "string", "maxLength": 40 },
+        "userId": { "type": "string", "maxLength": 100 },
+        "userRole": { "type": "string", "maxLength": 32 },
+        "action": { "type": "string", "maxLength": 64 },
+        "targetType": { "type": "string", "maxLength": 64 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "timestamp", "action", "summary"]
+    },
+    "SystemSetting": {
+      "title": "SystemSetting",
+      "description": "Global operational state and active version pointer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "activeVersionId": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 40 },
+        "orgId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/planning_versions/{versionId}": {
+      "schema": "PlanningVersion",
+      "description": "Stores planning versions and their assignment schedules"
+    },
+    "/employees/{employeeId}": {
+      "schema": "Employee",
+      "description": "Stores employee master records and contract configurations"
+    },
+    "/shifts/{shiftCode}": {
+      "schema": "Shift",
+      "description": "Stores shift codes, hours, and visual colors"
+    },
+    "/qualifications/{qualificationId}": {
+      "schema": "Qualification",
+      "description": "Stores employee shift habilitations and permissions"
+    },
+    "/coverage_requirements/{reqId}": {
+      "schema": "CoverageRequirement",
+      "description": "Stores coverage staffing rules and overrides"
+    },
+    "/rotation_patterns/{patternId}": {
+      "schema": "RotationPattern",
+      "description": "Stores cyclic rotation cycle templates"
+    },
+    "/rules/{ruleId}": {
+      "schema": "RuleDefinition",
+      "description": "Stores constraint rules and operational strictness"
+    },
+    "/pay_periods/{periodId}": {
+      "schema": "PayPeriod",
+      "description": "Stores fiscal and operational pay periods"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLogEntry",
+      "description": "Stores audit log history entries"
+    },
+    "/settings/{settingId}": {
+      "schema": "SystemSetting",
+      "description": "Stores system settings and active version reference"
+    }
+  }
+}
