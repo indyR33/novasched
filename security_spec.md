@@ -2,7 +2,7 @@
 
 ## 1. Data Invariants
 1. **Planning Version Integrity**: A planning version cannot have arbitrary keys, must maintain bounded assignment arrays, must enforce valid status (`DRAFT`, `SIMULATION`, `PUBLISHED`, `ARCHIVED`), and published versions cannot have assignments altered by unauthorized users.
-2. **Identity & Authorization**: Write operations require authenticated, email-verified users or bootstrapped system administrator (`richard.digonal@gmail.com`).
+2. **Identity & Authorization**: Write operations require authenticated, email-verified users or configured system administrator (via ADMIN_EMAIL secret).
 3. **Array Boundaries**: Arrays (such as `assignments` or `steps`) must be strictly constrained in size to prevent Denial of Wallet memory/storage exhaustion.
 4. **ID Hardening**: All document keys must match `^[a-zA-Z0-9_\-]+$` and be <= 128 chars.
 5. **No Blind Blanket Queries**: Any listing must restrict or filter by tenant/org/ownership context.

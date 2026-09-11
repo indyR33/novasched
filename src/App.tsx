@@ -19,8 +19,9 @@ import {
 } from './types/planning';
 import { StorageService } from './services/storage';
 import { FirestoreService } from './services/firestoreService';
-import { auth, loginWithGoogle, logoutFirebase, testFirestoreConnection } from './services/firebase';
+import { auth, db, loginWithGoogle, logoutFirebase, testFirestoreConnection } from './services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { RulesEngine } from './engine/rulesEngine';
 
 import { Header } from './components/Header';
@@ -121,8 +122,25 @@ export default function App() {
     // 2. Auth listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setAuthUser(user);
-      if (user?.email?.toLowerCase() === 'richard.digonal@gmail.com') {
+      const configuredAdmin = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+      const isUserAdmin = Boolean(
+        user && configuredAdmin && user.email?.toLowerCase().trim() === configuredAdmin
+      );
+
+      if (isUserAdmin) {
         setUserRole('ADMIN');
+        // Register in Firestore admins collection for server-side rules evaluation
+        try {
+          const adminDocRef = doc(db, 'admins', user.uid);
+          await setDoc(adminDocRef, {
+            uid: user.uid,
+            email: user.email || '',
+            role: 'ADMIN',
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (adminErr) {
+          console.warn('Admin status sync notice:', adminErr);
+        }
       }
       if (user) {
         try {

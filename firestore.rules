@@ -14,12 +14,15 @@ service cloud.firestore {
     }
 
     function isVerified() {
-      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == 'richard.digonal@gmail.com');
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        request.auth.token.firebase.sign_in_provider == 'google.com'
+      );
     }
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'richard.digonal@gmail.com' ||
+        request.auth.token.admin == true ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -185,6 +188,16 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow get, list: if true;
       allow create, update: if isSignedIn() && isVerified() && isValidId(settingId) && isValidSystemSetting(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 11. Admins (RBAC Registry)
+    match /admins/{adminId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn() && isVerified() && (
+        isAdmin() ||
+        request.auth.uid == adminId
+      );
       allow delete: if isAdmin();
     }
   }
