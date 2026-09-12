@@ -374,6 +374,7 @@ export default function App() {
       date,
       shiftCode,
       countedHours: shift?.countedHours || 0,
+      source: 'manual',
       isOverride,
       overrideReason: isOverride ? overrideReason : undefined,
       comment: comment || undefined
@@ -456,9 +457,28 @@ export default function App() {
   const handleApplyGeneratedAssignments = useCallback((newAssignments: Assignment[]) => {
     if (!currentVersion) return;
 
+    // Index newly generated assignments by employee and date
+    const newAssignmentsMap = new Map<string, Assignment>();
+    newAssignments.forEach(a => {
+      newAssignmentsMap.set(`${a.employeeId}_${a.date}`, a);
+    });
+
+    // Merge: retain all existing assignments that were not generated/replaced,
+    // and seamlessly add all newly generated assignments
+    const mergedAssignments: Assignment[] = [];
+
+    (currentVersion.assignments || []).forEach(existing => {
+      const key = `${existing.employeeId}_${existing.date}`;
+      if (!newAssignmentsMap.has(key)) {
+        mergedAssignments.push(existing);
+      }
+    });
+
+    mergedAssignments.push(...newAssignments);
+
     const updatedVersion: PlanningVersion = {
       ...currentVersion,
-      assignments: newAssignments,
+      assignments: mergedAssignments,
       updatedAt: new Date().toISOString()
     };
 
@@ -469,7 +489,7 @@ export default function App() {
     StorageService.addAuditLog(
       'SCHEDULE_GENERATED',
       `${userRole} (Session)`,
-      `Génération automatique appliquée : ${newAssignments.length} affectations créées`
+      `Génération automatique appliquée : ${newAssignments.length} affectations intégrées (fusion intelligente avec l'existant)`
     );
   }, [currentVersion, versions, userRole]);
 

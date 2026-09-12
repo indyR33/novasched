@@ -57,7 +57,7 @@ export interface Assignment {
   employeeId: string;
   shiftCode: string;
   countedHours: number;
-  source?: 'generated' | 'manual' | 'imported';
+  source?: 'generated' | 'manual' | 'imported' | 'preserved';
   isOverride?: boolean;
   overrideReason?: string;
   overrideAuthor?: string;
@@ -191,6 +191,8 @@ export interface GenerationConfig {
   s3Weight: number;
   sundayWeight: number;
   hoursWeight: number;
+  preserveExistingAssignments?: boolean;
+  linkToPriorHistory?: boolean;
 }
 
 export interface GenerationDiagnostic {

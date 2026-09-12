@@ -28,6 +28,8 @@ export interface GenerationResult {
     rotationAppliedCount?: number;
     rotationAdjustmentsCount?: number;
     appliedRotationPatternName?: string;
+    preservedExistingCount?: number;
+    priorHistoryLinked?: boolean;
   };
 }
 
@@ -35,6 +37,7 @@ export class PlanningGenerator {
   /**
    * Generates a complete compliant schedule prioritizing rotation patterns
    * while strictly respecting all legal & contract constraints (HARD) and coverage minimums.
+   * Seamlessly links with pre-existing planning data before and within the generation period.
    */
   public static generate(
     config: GenerationConfig,
@@ -47,6 +50,17 @@ export class PlanningGenerator {
   ): GenerationResult {
     const shiftMap = new Map<string, Shift>(shifts.map(s => [s.code, s]));
     const activeEmployees = employees.filter(e => e.isActive);
+
+    const preserveExisting = config.preserveExistingAssignments !== false;
+    const linkHistory = config.linkToPriorHistory !== false;
+
+    // Helper: date arithmetic without timezone shift issues
+    const addDays = (dateStr: string, days: number): string => {
+      const parts = dateStr.split('-');
+      const d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().split('T')[0];
+    };
 
     // Sort employees deterministically (by team, matricule, name) to ensure predictable phase staggering
     activeEmployees.sort((a, b) => {
@@ -70,23 +84,40 @@ export class PlanningGenerator {
       }
     }
 
-    // 2. Filter locked pre-existing assignments (absences CP, AM or manual overrides)
-    const lockedMap = new Map<string, Assignment>();
+    // Fast lookup map for all pre-existing assignments
+    const existingMap = new Map<string, Assignment>();
     (existingAssignments || []).forEach(asg => {
-      const shift = shiftMap.get(asg.shiftCode);
-      if (shift && (shift.type === 'absence' || asg.isOverride || asg.source === 'manual')) {
-        lockedMap.set(`${asg.employeeId}_${asg.date}`, asg);
+      existingMap.set(`${asg.employeeId}_${asg.date}`, asg);
+    });
+
+    // 2. Filter locked pre-existing assignments & preserved assignments within the generated range
+    const lockedMap = new Map<string, Assignment>();
+    const preservedMap = new Map<string, Assignment>();
+    let preservedCount = 0;
+
+    (existingAssignments || []).forEach(asg => {
+      if (asg.date >= config.startDate && asg.date <= config.endDate) {
+        const shift = shiftMap.get(asg.shiftCode);
+        const isAbsence = shift?.type === 'absence';
+        const isExplicitOverride = Boolean(asg.isOverride);
+
+        if (isAbsence || isExplicitOverride) {
+          lockedMap.set(`${asg.employeeId}_${asg.date}`, asg);
+        } else if (preserveExisting) {
+          preservedMap.set(`${asg.employeeId}_${asg.date}`, asg);
+          preservedCount++;
+        }
       }
     });
 
     // 3. Build dates sequence
     const dates: string[] = [];
-    const curr = new Date(config.startDate);
-    const end = new Date(config.endDate);
+    const curr = new Date(config.startDate + 'T00:00:00Z');
+    const end = new Date(config.endDate + 'T00:00:00Z');
 
     while (curr <= end) {
       dates.push(curr.toISOString().split('T')[0]);
-      curr.setDate(curr.getDate() + 1);
+      curr.setUTCDate(curr.getUTCDate() + 1);
     }
 
     const generatedAssignments: Assignment[] = [];
@@ -97,6 +128,7 @@ export class PlanningGenerator {
     let rotationAdjustmentsCount = 0;
 
     // Track running stats for workload balancing and constraint checking
+    // INTELLIGENT LINKING: Carry over prior history (consecutive work days, last shift for 11h rest, worked hours)
     const empStats = new Map<string, {
       totalHours: number;
       s3Count: number;
@@ -106,12 +138,61 @@ export class PlanningGenerator {
       lastDate?: string;
     }>();
 
-    activeEmployees.forEach(e => {
-      empStats.set(e.id, {
-        totalHours: 0,
-        s3Count: 0,
-        sundaysCount: 0,
-        consecutiveWorkDays: 0
+    activeEmployees.forEach(emp => {
+      let consecutiveWorkDays = 0;
+      let lastShiftCode: string | undefined = undefined;
+      let lastDate: string | undefined = undefined;
+      let priorHours = 0;
+      let priorS3 = 0;
+      let priorSundays = 0;
+
+      if (linkHistory) {
+        // Find assignment on the day immediately before startDate
+        const dayBefore = addDays(config.startDate, -1);
+        const prevAsg = existingMap.get(`${emp.id}_${dayBefore}`);
+
+        if (prevAsg) {
+          lastShiftCode = prevAsg.shiftCode;
+          lastDate = dayBefore;
+
+          // Count consecutive working days ending on dayBefore
+          let checkDate = dayBefore;
+          while (true) {
+            const a = existingMap.get(`${emp.id}_${checkDate}`);
+            if (!a) break;
+            const s = shiftMap.get(a.shiftCode);
+            if (s && s.type === 'travail' && a.shiftCode !== 'OFF') {
+              consecutiveWorkDays++;
+              checkDate = addDays(checkDate, -1);
+            } else {
+              break;
+            }
+          }
+        }
+
+        // Count hours & penibility worked in the 14 days prior to startDate
+        const fourteenDaysBefore = addDays(config.startDate, -14);
+        (existingAssignments || []).forEach(a => {
+          if (a.employeeId === emp.id && a.date < config.startDate && a.date >= fourteenDaysBefore) {
+            const s = shiftMap.get(a.shiftCode);
+            if (s && s.type === 'travail' && a.shiftCode !== 'OFF') {
+              priorHours += a.countedHours || s.countedHours || 0;
+              if (a.shiftCode === 'S3') priorS3++;
+              const dParts = a.date.split('-');
+              const dayOfWeek = new Date(Date.UTC(parseInt(dParts[0], 10), parseInt(dParts[1], 10) - 1, parseInt(dParts[2], 10))).getUTCDay();
+              if (dayOfWeek === 0) priorSundays++;
+            }
+          }
+        });
+      }
+
+      empStats.set(emp.id, {
+        totalHours: priorHours,
+        s3Count: priorS3,
+        sundaysCount: priorSundays,
+        consecutiveWorkDays,
+        lastShiftCode,
+        lastDate
       });
     });
 
@@ -175,8 +256,8 @@ export class PlanningGenerator {
     // MAIN DAY-BY-DAY SCHEDULING ENGINE
     // =========================================================================
     dates.forEach((date, dayIndex) => {
-      const dateObj = new Date(date);
-      const dayOfWeek = dateObj.getDay();
+      const dateObj = new Date(date + 'T00:00:00Z');
+      const dayOfWeek = dateObj.getUTCDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       const isSunday = dayOfWeek === 0;
 
@@ -192,26 +273,38 @@ export class PlanningGenerator {
       const todaysAssignments = new Map<string, Assignment>();
 
       // -----------------------------------------------------------------------
-      // STEP 1: PRESERVE LOCKED ASSIGNMENTS (Absences CP/AM or Manual Overrides)
+      // STEP 1: PRESERVE LOCKED ASSIGNMENTS (Absences CP/AM or Overrides) & PRESERVED EXISTING SHIFTS
       // -----------------------------------------------------------------------
       activeEmployees.forEach(emp => {
         const locked = lockedMap.get(`${emp.id}_${date}`);
-        if (locked) {
-          generatedAssignments.push({ ...locked, source: locked.source || 'manual' });
+        const preserved = preservedMap.get(`${emp.id}_${date}`);
+        const existingToKeep = locked || preserved;
+
+        if (existingToKeep) {
+          const shift = shiftMap.get(existingToKeep.shiftCode);
+          const isWork = shift && shift.type === 'travail' && existingToKeep.shiftCode !== 'OFF';
+          const hours = isWork ? (existingToKeep.countedHours || shift.countedHours || 0) : 0;
+
+          const keptAsg: Assignment = {
+            ...existingToKeep,
+            source: existingToKeep.source || (locked ? 'manual' : 'preserved'),
+            comment: existingToKeep.comment || (preserved ? 'Affectation existante préservée' : undefined)
+          };
+
+          generatedAssignments.push(keptAsg);
           assignedToday.add(emp.id);
-          todaysAssignments.set(emp.id, locked);
+          todaysAssignments.set(emp.id, keptAsg);
 
           const stats = empStats.get(emp.id)!;
-          const shift = shiftMap.get(locked.shiftCode);
-          if (shift && shift.type === 'travail') {
+          if (isWork) {
             stats.consecutiveWorkDays++;
-            stats.totalHours += locked.countedHours;
-            if (locked.shiftCode === 'S3') stats.s3Count++;
+            stats.totalHours += hours;
+            if (existingToKeep.shiftCode === 'S3') stats.s3Count++;
             if (isSunday) stats.sundaysCount++;
           } else {
             stats.consecutiveWorkDays = 0;
           }
-          stats.lastShiftCode = locked.shiftCode;
+          stats.lastShiftCode = existingToKeep.shiftCode;
           stats.lastDate = date;
         }
       });
@@ -394,8 +487,17 @@ export class PlanningGenerator {
               const stats = empStats.get(emp.id)!;
               const currentAsg = todaysAssignments.get(emp.id);
 
-              // Don't modify locked absences or already assigned to this requirement
-              if (currentAsg && (currentAsg.source === 'manual' || currentAsg.isOverride || currentAsg.shiftCode === req.subFamily)) {
+              // Don't modify locked absences, preserved existing assignments, or already assigned to this requirement
+              if (
+                currentAsg && (
+                  currentAsg.source === 'manual' ||
+                  currentAsg.source === 'preserved' ||
+                  currentAsg.isOverride ||
+                  lockedMap.has(`${emp.id}_${date}`) ||
+                  preservedMap.has(`${emp.id}_${date}`) ||
+                  currentAsg.shiftCode === req.subFamily
+                )
+              ) {
                 return false;
               }
 
@@ -654,7 +756,9 @@ export class PlanningGenerator {
         rotationAdherencePercentage: selectedPattern ? rotationAdherence : undefined,
         rotationAppliedCount: selectedPattern ? rotationAppliedCount : undefined,
         rotationAdjustmentsCount: selectedPattern ? rotationAdjustmentsCount : undefined,
-        appliedRotationPatternName: selectedPattern ? selectedPattern.name : undefined
+        appliedRotationPatternName: selectedPattern ? selectedPattern.name : undefined,
+        preservedExistingCount: preservedCount,
+        priorHistoryLinked: linkHistory
       }
     };
   }

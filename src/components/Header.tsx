@@ -222,14 +222,14 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-generator-btn"
               onClick={onOpenGenerator}
               disabled={isPublished}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-white shadow-xs transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-xs transition-all select-none ${
                 isPublished
-                  ? 'bg-slate-400 cursor-not-allowed opacity-60'
-                  : 'bg-[#3B82F6] hover:bg-[#2563EB] active:bg-[#1D4ED8]'
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 shadow-blue-500/20 hover:shadow-md'
               }`}
             >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('header.generate')}</span>
+              <Zap className="w-3.5 h-3.5 fill-current text-blue-200" />
+              <span className="hidden sm:inline font-medium">{t('header.generate')}</span>
             </button>
           )}
 

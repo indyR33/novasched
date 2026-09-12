@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Zap, ShieldCheck, AlertTriangle, Check, ArrowRight, RotateCcw, Layers, Info } from 'lucide-react';
+import { X, Zap, ShieldCheck, AlertTriangle, Check, ArrowRight, RotateCcw, Layers, Info, Link2, History } from 'lucide-react';
 import {
   Employee,
   Shift,
@@ -61,6 +61,10 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   const [sundayWeight, setSundayWeight] = useState(2);
   const [hoursWeight, setHoursWeight] = useState(1);
 
+  // Existing schedule integration controls
+  const [preserveExisting, setPreserveExisting] = useState(true);
+  const [linkPriorHistory, setLinkPriorHistory] = useState(true);
+
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
 
@@ -88,7 +92,9 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
         targetWeeklyRestDays: 2.5,
         s3Weight,
         sundayWeight,
-        hoursWeight
+        hoursWeight,
+        preserveExistingAssignments: preserveExisting,
+        linkToPriorHistory: linkPriorHistory
       };
 
       const genResult = PlanningGenerator.generate(
@@ -164,6 +170,75 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
                 onChange={e => setGenEndDate(e.target.value)}
                 className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500 font-mono text-xs"
               />
+            </div>
+          </div>
+
+          {/* EXISTING PLANNING INTEGRATION & INTELLIGENT LINKING */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center">
+                <Link2 className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-800 text-xs">
+                  {isEn ? 'Integration with Existing Schedule' : 'Intégration au planning existant (Enchaînement intelligent)'}
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  {isEn ? 'Link seamlessly without overwriting existing assignments or violating rules' : 'S\'articule harmonieusement sans écraser les données existantes'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-slate-200/80">
+              {/* Toggle: Preserve existing assignments */}
+              <label className="flex items-start justify-between gap-3 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-200 transition-colors">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                    {isEn ? 'Preserve existing assignments & complete gaps' : 'Préserver l\'existant et compléter intelligemment'}
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 uppercase">
+                      {isEn ? 'Recommended' : 'Recommandé'}
+                    </span>
+                  </span>
+                  <p className="text-[11px] text-slate-500 leading-snug">
+                    {isEn
+                      ? 'Keeps all existing shifts, leaves, and overrides already planned. Only generates missing slots according to coverage rules.'
+                      : 'Conserve tous les postes, congés et dérogations déjà planifiés sur la période. Ne génère que les créneaux vacants pour atteindre la couverture.'}
+                  </p>
+                </div>
+                <div className="relative inline-flex items-center shrink-0 pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={preserveExisting}
+                    onChange={e => setPreserveExisting(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </div>
+              </label>
+
+              {/* Toggle: Link to prior history */}
+              <label className="flex items-start justify-between gap-3 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-200 transition-colors">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                    <History className="w-3.5 h-3.5 text-indigo-600" />
+                    {isEn ? 'Enforce continuous legal rest & consecutive days linking' : 'Liaison continue avec l\'historique amont (R23 / R27)'}
+                  </span>
+                  <p className="text-[11px] text-slate-500 leading-snug">
+                    {isEn
+                      ? 'Checks shifts before the start date to enforce 11h rest after S3 and prevent exceeding 6 consecutive work days across periods.'
+                      : 'Analyse les postes précédant la date de début pour garantir les 11h de repos après un S3 la veille et ne pas dépasser 6 jours de travail consécutifs.'}
+                  </p>
+                </div>
+                <div className="relative inline-flex items-center shrink-0 pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={linkPriorHistory}
+                    onChange={e => setLinkPriorHistory(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </div>
+              </label>
             </div>
           </div>
 
@@ -372,6 +447,25 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
                       <span className="text-[10px] text-emerald-700">
                         {result.summary.rotationAppliedCount} {isEn ? 'direct cycle matches' : 'affectations directes cycle'} • {result.summary.rotationAdjustmentsCount || 0} {isEn ? 'legal adjustments' : 'ajustements de sécurité'}
                       </span>
+                    </div>
+                  )}
+
+                  {result.summary.preservedExistingCount !== undefined && result.summary.preservedExistingCount > 0 && (
+                    <div className="text-[11px] text-indigo-900 bg-indigo-50/90 p-2 rounded-lg border border-indigo-200 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Link2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        {isEn ? 'Existing shifts seamlessly preserved & linked:' : 'Affectations existantes préservées & liées :'}
+                      </span>
+                      <span className="text-[10px] font-bold text-indigo-700 font-mono bg-white px-2 py-0.5 rounded border border-indigo-200">
+                        {result.summary.preservedExistingCount} {isEn ? 'shifts intact' : 'postes conservés'}
+                      </span>
+                    </div>
+                  )}
+
+                  {result.summary.priorHistoryLinked && (
+                    <div className="text-[10px] text-slate-600 bg-white/80 px-2 py-1 rounded border border-slate-200 flex items-center gap-1.5">
+                      <History className="w-3 h-3 text-indigo-500" />
+                      <span>{isEn ? 'Continuous transition with prior period active (11h rest & max 6 consecutive days respected)' : 'Liaison historique amont active (repos 11h et max 6j consécutifs garantis)'}</span>
                     </div>
                   )}
 
